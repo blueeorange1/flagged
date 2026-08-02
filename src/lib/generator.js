@@ -401,8 +401,13 @@ function buildRecentEvents(c, rng) {
   c.evidence.recentEvents = ev.sort((a, b) => a.ts - b.ts)
 }
 
-function buildCase(rng, day, index, truth) {
-  const tactic = pick(rng, TACTIC_BY_TRUTH[truth])
+function pickTactic(rng, truth, tally) {
+  const opts = TACTIC_BY_TRUTH[truth]
+  const min = Math.min(...opts.map((t) => tally[t] || 0))
+  return pick(rng, opts.filter((t) => (tally[t] || 0) === min))
+}
+
+function buildCase(rng, day, index, truth, tactic) {
   const sender = pickSender(rng, truth, tactic)
   const surface = pick(rng, templates[tactic].surfaces)
   const evidence = buildEvidence(rng, day, sender)
@@ -709,24 +714,37 @@ export function solvable(c, day) {
   return fired.length >= 1
 }
 
-export function generateDay(day, seed) {
+export function generateDay(day, seed, tally = {}) {
   const plan = DAY_PLAN[day]
   const cases = []
+  const bump = (t) => {
+    if (t !== 'none') tally[t] = (tally[t] || 0) + 1
+  }
   for (let i = 0; i < plan.length; i++) {
     if (plan[i] === 'TWIST') {
-      cases.push(buildTwistCase(day))
+      const c = buildTwistCase(day)
+      bump(c.tactic)
+      cases.push(c)
       continue
     }
     if (TUTORIAL_CASES[plan[i]]) {
-      cases.push(TUTORIAL_CASES[plan[i]](day))
+      const c = TUTORIAL_CASES[plan[i]](day)
+      bump(c.tactic)
+      cases.push(c)
       continue
     }
+    const tactic = pickTactic(
+      mulberry32(seed + day * 7919 + i * 104729 + 999983),
+      plan[i],
+      tally
+    )
     let c = null
     for (let attempt = 0; attempt < 80; attempt++) {
       const rng = mulberry32(seed + day * 7919 + i * 104729 + attempt * 31)
-      c = buildCase(rng, day, i, plan[i])
+      c = buildCase(rng, day, i, plan[i], tactic)
       if (solvable(c, day)) break
     }
+    bump(c.tactic)
     cases.push(c)
   }
   return cases
@@ -734,7 +752,8 @@ export function generateDay(day, seed) {
 
 export function generateGame(seed = Math.floor(Math.random() * 1e9)) {
   const days = {}
-  for (let d = 1; d <= 6; d++) days[d] = generateDay(d, seed)
+  const tally = {}
+  for (let d = 1; d <= 6; d++) days[d] = generateDay(d, seed, tally)
   return { seed, days }
 }
 

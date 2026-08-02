@@ -117,10 +117,17 @@ export default function App() {
   }, [timerOn, phase, showRules, showSettings])
 
   useEffect(() => {
+    if (timeLeft === 15) sfx.alert()
     if (timeLeft === 0) decide('hold', true)
   }, [timeLeft])
 
+  const playing = phase === 'play'
+  useEffect(() => {
+    if (playing && cur) sfx.msg()
+  }, [cur, playing])
+
   function startShift() {
+    sfx.click()
     if (day === 1 && tour < TOUR.length) {
       setPhase('tour')
     } else {
@@ -256,6 +263,7 @@ export default function App() {
   }
 
   function next() {
+    sfx.click()
     if (idx + 1 < game.days[day].length) {
       setIdx(idx + 1)
       setPhase('play')
