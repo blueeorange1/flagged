@@ -209,11 +209,11 @@ export function Settings({ onClose, onSaved }) {
   return (
     <Modal title="SETTINGS">
       <div style={{ color: 'var(--color-c08)' }}>
-        Paste an Anthropic API key to make senders talk back for real. Leave it empty and the
-        game runs on written dialogue instead. Everything still works.
+        Optional: paste your own Anthropic API key to override the built-in one. Leave it
+        empty and everything still works.
       </div>
       <div style={{ color: 'var(--color-c06)', marginTop: 3 }}>
-        The key is stored in this browser only. It is never sent anywhere except Anthropic.
+        The key is stored in this browser only and used only to answer sender chat.
       </div>
       <input
         style={{ width: '100%', marginTop: 3 }}

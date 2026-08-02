@@ -2,7 +2,6 @@ import world from '../data/world.json' with { type: 'json' }
 import { bakedReply } from './dialogue.js'
 
 const KEY = 'flagged.apikey'
-const MODEL = 'claude-haiku-4-5-20251001'
 
 export function getKey() {
   return localStorage.getItem(KEY) || ''
@@ -84,10 +83,7 @@ function systemPrompt(card) {
 }
 
 export async function aiReply(c, chat, playerText) {
-  const key = getKey()
   const turn = chat.filter((m) => m.from === 'me').length
-
-  if (!key) return bakedReply(c, playerText, turn)
 
   let messages = chat
     .filter((m, i) => i > 0)
@@ -100,25 +96,13 @@ export async function aiReply(c, chat, playerText) {
   if (messages[0].role === 'assistant') messages = messages.slice(1)
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/chat', {
       method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 300,
-        system: [
-          {
-            type: 'text',
-            text: systemPrompt(personaCard(c)),
-            cache_control: { type: 'ephemeral' },
-          },
-        ],
+        system: systemPrompt(personaCard(c)),
         messages,
+        key: getKey() || undefined,
       }),
     })
 
