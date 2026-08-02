@@ -47,7 +47,7 @@ export function Relay({ c, chat, onSend, busy, aiOn, suggest, hlFirst }) {
   useEffect(() => {
     const box = endRef.current && endRef.current.closest('.win-body')
     if (box) box.scrollTop = box.scrollHeight
-  }, [chat.length, busy])
+  }, [chat.length, busy, suggest, unasked.length])
 
   function send() {
     const t = text.trim()
@@ -109,7 +109,16 @@ export function Relay({ c, chat, onSend, busy, aiOn, suggest, hlFirst }) {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 2, marginTop: 2, position: 'sticky', bottom: 0 }}>
+      <div
+        style={{
+          display: 'flex',
+          gap: 2,
+          marginTop: 2,
+          position: 'sticky',
+          bottom: 0,
+          background: 'var(--color-c01)',
+        }}
+      >
         <input
           style={{ flex: 1, minWidth: 0 }}
           value={text}

@@ -141,6 +141,7 @@ export default function App() {
   const [flash, setFlash] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
   const [tutSkip, setTutSkip] = useState(false)
+  const [inboxHinted, setInboxHinted] = useState(false)
   const [skipAsk, setSkipAsk] = useState(false)
   const [typedN, setTypedN] = useState(0)
   const [ready, setReady] = useState(false)
@@ -282,6 +283,8 @@ export default function App() {
   function focus(id) {
     opened.current.add(id)
     setZorder((z) => (z[z.length - 1] === id ? z : [...z.filter((x) => x !== id), id]))
+    if (!inboxHinted && id === 'inbox' && phase === 'play' && cur && !cur.tut && cur.surface === 'inbox')
+      setInboxHinted(true)
     if (tutSkip || phase !== 'play' || !cur || !cur.tut) return
     const wants =
       (cur.tut === 'fraud' && ((hintStep === 0 && id === 'ledger') || (hintStep === 2 && id === 'sentry'))) ||
@@ -338,6 +341,7 @@ export default function App() {
       sfx.wrong()
       return
     }
+    if (!inboxHinted && !c.tut && day <= 2 && c.surface === 'inbox') setInboxHinted(true)
     const shouldApprove = c.truth === 'legit'
     const correct = (decision === 'approve') === shouldApprove
     const questioned = chat.some((m) => m.from === 'me')
@@ -443,13 +447,26 @@ export default function App() {
     setArchive([])
     setTutSkip(false)
     setSkipAsk(false)
+    setInboxHinted(false)
     setReview(null)
     hintHist.current = []
     setPhase('brief')
   }
 
   function hintLine() {
-    if (tutSkip || phase !== 'play' || !cur || day !== 1) return null
+    if (tutSkip || phase !== 'play' || !cur) return null
+    if (!cur.tut) {
+      if (!inboxHinted && day <= 2 && cur.surface === 'inbox')
+        return {
+          text: 'This one came by email. Open INBOX.',
+          adv: 'action',
+          spots: ['win-inbox'],
+          arrow: 'win-inbox',
+          lit: null,
+        }
+      return null
+    }
+    if (day !== 1) return null
     if (cur.tut === 'fraud') {
       return [
         { text: 'A payment is waiting in LEDGER. Click LEDGER.', adv: 'action', arrow: 'win-ledger', lit: ['ledger'] },
