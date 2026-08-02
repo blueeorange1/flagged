@@ -57,22 +57,83 @@ body {
 
 #stage {
   position: relative;
+  width: 640px;
+  height: 360px;
+  overflow: hidden;
+  background: var(--color-c00);
+  font-size: 7px;
+  line-height: 9px;
+  transform: scale(var(--stage-scale, 2));
+  transform-origin: center center;
+  image-rendering: pixelated;
+}
+
+#camera {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+  backface-visibility: hidden;
+  transform-origin: 526px 190px;
+}
+
+.cam-in {
+  animation: camin 480ms steps(4) forwards;
+}
+
+.cam-out {
+  animation: camout 480ms steps(4) forwards;
+}
+
+@keyframes camin {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.12) translate(-6px, -4px);
+  }
+}
+
+@keyframes camout {
+  from {
+    transform: scale(1.12) translate(-6px, -4px);
+  }
+  to {
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+#monitor {
+  position: absolute;
+  left: 96px;
+  top: 42px;
   width: 384px;
   height: 216px;
   overflow: hidden;
-  /* hard-stepped monitor glow centered on the desk area, no tiling */
-  background:
-    radial-gradient(
-      circle at 192px 103px,
-      var(--color-c01) 0 78px,
-      transparent 78px
-    ),
-    var(--color-c00);
-  font-size: 7px;
-  line-height: 9px;
-  transform: scale(var(--stage-scale, 3));
-  transform-origin: center center;
-  image-rendering: pixelated;
+  background: var(--color-c00);
+}
+
+#monflick {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 910;
+  background: var(--color-c00);
+  opacity: 0;
+  animation: monflick 3400ms steps(1) infinite;
+}
+
+@keyframes monflick {
+  0%,
+  93.9% {
+    opacity: 0;
+  }
+  94% {
+    opacity: 0.1;
+  }
+  96%,
+  100% {
+    opacity: 0;
+  }
 }
 
 canvas,

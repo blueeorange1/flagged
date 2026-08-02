@@ -64,7 +64,11 @@ export function Brief({ day, onStart }) {
 }
 
 export function Result({ result, onNext }) {
-  const card = result.correct ? null : debriefs[result.tactic] || debriefs.none
+  const card = result.correct
+    ? null
+    : result.codeAsk
+      ? debriefs.code_readback
+      : debriefs[result.tactic] || debriefs.none
 
   return (
     <Modal title={result.expired ? 'TIME RAN OUT' : result.correct ? 'GOOD CALL' : 'THAT ONE COST YOU'}>
@@ -164,9 +168,9 @@ export function GameOver({ balance, personal, accuracy, obeyed, onRestart }) {
 }
 
 const HOW_TO_PLAY = [
-  'Requests arrive in RELAY, INBOX or LEDGER. The flashing window has the case.',
+  'Requests arrive on your phone, in INBOX or in LEDGER. The flashing spot has the case.',
   'SENTRY is the truth: every login, device and city.',
-  'Not sure? Ask the sender in RELAY. Tap a suggested question or type your own.',
+  'Not sure? Pick up the phone and message the sender. Tap a suggested question or type your own.',
   'APPROVE sends it. HOLD blocks it. Wrong either way costs you.',
 ]
 

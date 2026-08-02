@@ -48,6 +48,13 @@
     "tell": "The whole conversation quietly pointed at one thing: a code or a password.",
     "nextTime": "Never hand over a code or password. Not once, not ever."
   },
+  "code_readback": {
+    "title": "THE CODE READ-BACK",
+    "whatHappened": "The sender asked you to read out the sign-in code that landed on your phone. The code was theirs to steal, not yours to share.",
+    "realWorld": "A login code arriving means someone is signing in RIGHT NOW. If a caller wants it read back, the person signing in is them.",
+    "tell": "The code message itself said never share it, including with IT.",
+    "nextTime": "Nobody legitimate ever asks you to read back a code. Not IT, not support, not your bank."
+  },
   "none": {
     "title": "FALSE ALARM",
     "whatHappened": "You held a real request from a real coworker, and their work stopped dead while they waited on you.",

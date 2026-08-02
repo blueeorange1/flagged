@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import Avatar from './Avatar.jsx'
+import { useState } from 'react'
 import { travelMinutes } from '../lib/rules.js'
 
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
@@ -29,109 +28,6 @@ function Row({ k, v, warn, spot }) {
 function Head({ children }) {
   return (
     <div style={{ color: 'var(--color-c11)', marginTop: 3, marginBottom: 1 }}>{children}</div>
-  )
-}
-
-const SUGGESTED = [
-  'What city are you in right now?',
-  'What device are you messaging from?',
-  'Can I call you back on the number in our vendor file?',
-]
-
-export function Relay({ c, chat, onSend, busy, aiOn, suggest, hlFirst }) {
-  const [text, setText] = useState('')
-  const endRef = useRef(null)
-  const lastThem = chat.map((m) => m.from).lastIndexOf('them')
-  const unasked = SUGGESTED.filter((q) => !chat.some((m) => m.from === 'me' && m.text === q))
-
-  useEffect(() => {
-    const box = endRef.current && endRef.current.closest('.win-body')
-    if (box) box.scrollTop = box.scrollHeight
-  }, [chat.length, busy, suggest, unasked.length])
-
-  function send() {
-    const t = text.trim()
-    if (!t || busy) return
-    setText('')
-    onSend(t)
-  }
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
-        <Avatar seed={c.sender.avatarSeed} size={16} />
-        <div style={{ flex: 1 }}>
-          <div style={{ color: 'var(--color-c09)' }}>{c.sender.name}</div>
-          <div style={{ color: 'var(--color-c06)' }}>
-            {c.sender.role} - {c.sender.knownContact ? 'known contact' : 'NOT IN CONTACTS'}
-          </div>
-        </div>
-        <span style={{ color: aiOn ? 'var(--color-c10)' : 'var(--color-c02)' }}>
-          {aiOn ? 'AI' : 'OFF'}
-        </span>
-      </div>
-
-      <div style={{ flex: 1 }}>
-        {chat.map((m, i) => (
-          <div key={i} data-spot={i === lastThem ? 'reply-last' : undefined} style={{ marginBottom: 2 }}>
-            <span style={{ color: m.from === 'me' ? 'var(--color-c07)' : 'var(--color-c15)' }}>
-              {m.from === 'me' ? 'YOU: ' : c.sender.name.split(' ')[0].toUpperCase() + ': '}
-            </span>
-            <span style={{ color: m.from === 'me' ? 'var(--color-c07)' : 'var(--color-c08)' }}>
-              {m.text}
-            </span>
-          </div>
-        ))}
-        {busy && <div style={{ color: 'var(--color-c06)' }}>...</div>}
-        <div ref={endRef} />
-      </div>
-
-      {suggest && unasked.length > 0 && (
-        <div style={{ marginTop: 2 }}>
-          {unasked.map((q) => (
-            <button
-              key={q}
-              className={'btn' + (hlFirst && q === SUGGESTED[0] ? ' pulse-outline' : '')}
-              data-spot={q === SUGGESTED[0] ? 'suggest-0' : undefined}
-              disabled={busy}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                marginBottom: 1,
-                whiteSpace: 'normal',
-              }}
-              onClick={() => onSend(q)}
-            >
-              {'> ' + q}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div
-        style={{
-          display: 'flex',
-          gap: 2,
-          marginTop: 2,
-          position: 'sticky',
-          bottom: 0,
-          background: 'var(--color-c01)',
-        }}
-      >
-        <input
-          style={{ flex: 1, minWidth: 0 }}
-          value={text}
-          maxLength={140}
-          placeholder="ask a question"
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-        />
-        <button className="btn" onClick={send} disabled={busy}>
-          SEND
-        </button>
-      </div>
-    </div>
   )
 }
 

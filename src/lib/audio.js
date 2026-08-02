@@ -66,6 +66,15 @@ export const sfx = {
     tone(587, 0.05, 'square', 0.05, 0.07)
     tone(880, 0.05, 'square', 0.05, 0.14)
   },
+  buzz: (i = 1) => {
+    tone(64, 0.09, 'square', 0.02 + i * 0.015)
+    tone(58, 0.09, 'square', 0.02 + i * 0.015, 0.1)
+    tone(64, 0.09, 'square', 0.02 + i * 0.015, 0.2)
+  },
+  ding: () => {
+    tone(988, 0.05, 'triangle', 0.05)
+    tone(1319, 0.09, 'triangle', 0.045, 0.06)
+  },
   day: () => {
     tone(392, 0.06, 'triangle', 0.045)
     tone(523, 0.06, 'triangle', 0.045, 0.06)

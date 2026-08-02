@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Win, { DESK } from './components/Win.jsx'
-import { Relay, Inbox, Ledger, Sentry } from './components/Panes.jsx'
+import { Inbox, Ledger, Sentry } from './components/Panes.jsx'
+import Phone from './components/Phone.jsx'
+import Scene from './components/Scene.jsx'
 import { Brief, Result, DayEnd, GameOver, RuleBook, Settings } from './components/Overlays.jsx'
+import { STAGE } from './lib/scene.js'
 import { generateGame } from './lib/generator.js'
 import { firedRules } from './lib/rules.js'
 import { aiReply, hasKey } from './lib/ai.js'
@@ -13,15 +16,35 @@ const START_BALANCE = 340000
 const START_PERSONAL = 12400
 const BREACH_COST = 18000
 const TIMER_SECONDS = 90
+const LIFT_MS = 1200
+const DROP_MS = 600
 
 const DEFAULT_WINS = {
-  relay: { x: 1, y: 13, w: 190, h: 88, max: false },
-  inbox: { x: 193, y: 13, w: 190, h: 88, max: false },
+  inbox: { x: 1, y: 13, w: 190, h: 88, max: false },
   ledger: { x: 1, y: 103, w: 190, h: 88, max: false },
-  sentry: { x: 193, y: 103, w: 190, h: 88, max: false },
+  sentry: { x: 193, y: 13, w: 190, h: 178, max: false },
+}
+
+const SYS_SENDER = {
+  name: 'MERIDIAN SECURE',
+  avatarSeed: 'MERIDIAN SECURE',
+  role: 'System',
+  knownContact: true,
 }
 
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
+
+const isCodeCase = (c) => c.tactic === 'credential_harvesting' && c.surface === 'relay'
+
+// same display name can be a known contact or an impersonator - separate threads
+const thKey = (s) => s.name + (s.knownContact ? '' : '~u')
+
+function codeFor(c) {
+  let h = 0
+  for (const ch of c.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
+  const s = String(100000 + (h % 900000))
+  return s.slice(0, 3) + ' ' + s.slice(3)
+}
 
 function connectSegs(a, b) {
   if (b.x + b.w / 2 < a.x + a.w / 2) [a, b] = [b, a]
@@ -63,9 +86,9 @@ function SpotOverlay({ spots, arrow, connect, scale }) {
         if (!el) continue
         const r = el.getBoundingClientRect()
         let { left, top, right, bottom } = r
-        const win = el.closest('.win')
-        if (win && !id.startsWith('win-')) {
-          const wr = win.getBoundingClientRect()
+        const clip = el.closest('.phone-body') || el.closest('.win')
+        if (clip && !id.startsWith('win-')) {
+          const wr = clip.getBoundingClientRect()
           left = Math.max(left, wr.left)
           top = Math.max(top, wr.top)
           right = Math.min(right, wr.right)
@@ -118,7 +141,7 @@ function SpotOverlay({ spots, arrow, connect, scale }) {
 }
 
 export default function App() {
-  const [scale, setScale] = useState(3)
+  const [scale, setScale] = useState(2)
   const [game, setGame] = useState(() => generateGame())
   const [day, setDay] = useState(1)
   const [idx, setIdx] = useState(0)
@@ -137,6 +160,13 @@ export default function App() {
   const [archive, setArchive] = useState([])
   const [result, setResult] = useState(null)
 
+  const [threads, setThreads] = useState({})
+  const [phoneState, setPhoneState] = useState('closed')
+  const [phoneT, setPhoneT] = useState(0)
+  const [phoneView, setPhoneView] = useState({ mode: 'list' })
+  const [camDir, setCamDir] = useState(null)
+  const [buzzSeq, setBuzzSeq] = useState(0)
+
   const [hintStep, setHintStep] = useState(0)
   const [flash, setFlash] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
@@ -149,7 +179,7 @@ export default function App() {
   const hintHist = useRef([])
 
   const [wins, setWins] = useState(DEFAULT_WINS)
-  const [zorder, setZorder] = useState(['ledger', 'inbox', 'sentry', 'relay'])
+  const [zorder, setZorder] = useState(['inbox', 'ledger', 'sentry'])
   const [showRules, setShowRules] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [aiOn, setAiOn] = useState(hasKey())
@@ -157,25 +187,52 @@ export default function App() {
 
   const opened = useRef(new Set())
   const startedAt = useRef(Date.now())
+  const phoneRef = useRef({ state: 'closed', view: { mode: 'list' } })
+  phoneRef.current = { state: phoneState, view: phoneView }
 
   const cur = game.days[day][idx]
   const accuracy = total === 0 ? 100 : Math.round((right / total) * 100)
 
   useEffect(() => {
     function fit() {
-      const s = Math.min(window.innerWidth / 384, window.innerHeight / 216)
-      setScale(Math.max(1, Math.min(3, Math.floor(s))))
+      const s = Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h)
+      setScale(Math.max(1, Math.min(2, Math.floor(s))))
     }
     fit()
     window.addEventListener('resize', fit)
     return () => window.removeEventListener('resize', fit)
   }, [])
 
+  function pushMsg(name, sender, from, text, read) {
+    setThreads((t) => {
+      const th = t[name] || { sender, msgs: [], unread: 0, lastTs: 0 }
+      const ts = th.lastTs ? th.lastTs + 60000 : cur.evidence.sessionTs
+      return {
+        ...t,
+        [name]: {
+          sender: th.msgs.length ? th.sender : sender,
+          msgs: [...th.msgs, { from, text, ts }],
+          unread: read ? th.unread : th.unread + 1,
+          lastTs: ts,
+        },
+      }
+    })
+  }
+
   useEffect(() => {
     if (!cur) return
-    const first =
-      cur.surface === 'relay' ? cur.content.text : opening(cur)
+    const first = cur.surface === 'relay' ? cur.content.text : opening(cur)
     setChat([{ from: 'them', text: first }])
+    if (isCodeCase(cur))
+      pushMsg(
+        thKey(SYS_SENDER),
+        SYS_SENDER,
+        'them',
+        'Meridian sign-in code: ' + codeFor(cur) + '. Never share this code with anyone, including IT or support staff.',
+        false
+      )
+    pushMsg(thKey(cur.sender), cur.sender, 'them', first, false)
+    setPhoneView({ mode: 'list' })
     opened.current = new Set()
     startedAt.current = Date.now()
     setHintStep(0)
@@ -272,12 +329,42 @@ export default function App() {
 
   const playing = phase === 'play'
   useEffect(() => {
-    if (playing && cur) sfx.msg()
+    if (playing && cur) {
+      if (cur.surface === 'relay') setBuzzSeq((b) => b + 1)
+      else sfx.msg()
+    }
   }, [cur, playing])
 
   function startShift() {
     sfx.click()
     setPhase('play')
+  }
+
+  function openPhone() {
+    if (phoneState !== 'closed') return
+    sfx.click()
+    opened.current.add('relay')
+    setCamDir('in')
+    setPhoneState('lift')
+    setPhoneT(performance.now())
+    setTimeout(() => setPhoneState('open'), LIFT_MS)
+  }
+
+  function closePhone() {
+    if (phoneState !== 'open') return
+    sfx.click()
+    setCamDir('out')
+    setPhoneState('drop')
+    setPhoneT(performance.now())
+    setTimeout(() => setPhoneState('closed'), DROP_MS)
+    setPhoneView({ mode: 'list' })
+  }
+
+  function viewThread(v) {
+    sfx.open()
+    setPhoneView(v)
+    if (v.mode === 'thread')
+      setThreads((t) => (t[v.name] ? { ...t, [v.name]: { ...t[v.name], unread: 0 } } : t))
   }
 
   function focus(id) {
@@ -315,11 +402,15 @@ export default function App() {
     setFlash(null)
     setReview(null)
     setChat((c) => [...c, { from: 'me', text }])
+    pushMsg(thKey(cur.sender), cur.sender, 'me', text, true)
     setBusy(true)
     const res = await aiReply(cur, chat, text)
     setBusy(false)
     sfx.msg()
     setChat((c) => [...c, { from: 'them', text: res.reply, leaked: res.contradictionLeaked }])
+    const p = phoneRef.current
+    const seen = p.state === 'open' && p.view.mode === 'thread' && p.view.name === thKey(cur.sender)
+    pushMsg(thKey(cur.sender), cur.sender, 'them', res.reply, seen)
     if (askTut) setHintStep((h) => (h < 4 ? 4 : h))
   }
 
@@ -337,7 +428,7 @@ export default function App() {
       return
     }
     if (!tutSkip && c.tut === 'ask' && !chat.some((m) => m.from === 'me')) {
-      setFlash('Ask them first. Tap a question in RELAY.')
+      setFlash('Ask them first. Pick up the phone.')
       sfx.wrong()
       return
     }
@@ -403,6 +494,7 @@ export default function App() {
       loss,
       dataLost,
       complaint,
+      codeAsk: isCodeCase(c),
       firedLabels: firedRules(c, day).map((r) => r.label),
     })
 
@@ -429,6 +521,8 @@ export default function App() {
     setDay(day + 1)
     setIdx(0)
     setDayStats({ right: 0, total: 0, obeyed: 0 })
+    setThreads({})
+    setPhoneView({ mode: 'list' })
     setPhase('brief')
     sfx.day()
   }
@@ -445,6 +539,10 @@ export default function App() {
     setObeyedAll(0)
     setHistory([])
     setArchive([])
+    setThreads({})
+    setPhoneState('closed')
+    setPhoneView({ mode: 'list' })
+    setCamDir(null)
     setTutSkip(false)
     setSkipAsk(false)
     setInboxHinted(false)
@@ -484,14 +582,21 @@ export default function App() {
       ][hintStep]
     }
     if (cur.tut === 'ask') {
-      if (hintStep <= 3) {
+      const first = cur.sender.name.split(' ')[0]
+      if (hintStep <= 1) {
         return [
           { text: 'You cannot tell from the paperwork alone. Ask them directly.', adv: 'click', arrow: 'win-relay', lit: ['relay'] },
           { text: 'Real people answer consistently. Liars have to make things up.', adv: 'click', lit: ['relay'] },
-          { text: 'Ask where they are.', adv: 'none', spots: ['suggest-0'], arrow: 'suggest-0', lit: ['relay'] },
-          { text: 'Wait for the reply.', adv: 'none', lit: ['relay'] },
         ][hintStep]
       }
+      if (hintStep === 2) {
+        if (phoneState !== 'open')
+          return { text: 'Your phone is buzzing. Pick it up.', adv: 'none', spots: ['win-relay'], arrow: 'win-relay', lit: ['relay'] }
+        if (phoneView.mode !== 'thread' || phoneView.name !== thKey(cur.sender))
+          return { text: 'Open the message from ' + first + '.', adv: 'none', spots: ['thread-active'], arrow: 'thread-active', lit: ['relay'] }
+        return { text: 'Ask where they are.', adv: 'none', spots: ['suggest-0'], arrow: 'suggest-0', lit: ['relay'] }
+      }
+      if (hintStep === 3) return { text: 'Wait for the reply.', adv: 'none', lit: ['relay'] }
       const q = (chat.find((m) => m.from === 'me') || { text: '' }).text.toLowerCase()
       const dev = q.includes('device')
       const generic = !dev && !q.includes('city') && !q.includes('where')
@@ -525,16 +630,20 @@ export default function App() {
     return null
   }
 
+  function objectiveLine(c) {
+    if (c.content.kind === 'access')
+      return isCodeCase(c)
+        ? 'Someone is asking you for a verification code. Decide.'
+        : 'Someone wants account access. Decide.'
+    return 'Request to send ' + money(c.content.amount) + ' to ' + c.content.payee + '. Decide.'
+  }
+
   const suggest = tutSkip || !cur || cur.tut !== 'ask' || hintStep >= 2
-  const hlFirst = !tutSkip && cur && cur.tut === 'ask' && hintStep === 2
+  const hlFirst =
+    !tutSkip && cur && cur.tut === 'ask' && hintStep === 2 &&
+    phoneState === 'open' && phoneView.mode === 'thread' && phoneView.name === thKey(cur.sender)
 
   const panes = {
-    relay: {
-      title: 'RELAY',
-      node: (
-        <Relay c={cur} chat={chat} onSend={send} busy={busy} aiOn={aiOn} suggest={suggest} hlFirst={hlFirst} />
-      ),
-    },
     inbox: { title: 'INBOX', node: <Inbox c={cur} archive={archive} /> },
     ledger: {
       title: 'LEDGER',
@@ -558,198 +667,232 @@ export default function App() {
   const tutActive = day === 1 && !tutSkip && phase === 'play' && cur && cur.tut
   const spotCfg = review === null && !flash ? hintObj : null
   const lit = spotCfg && spotCfg.lit ? spotCfg.lit : null
+  const phoneDim = lit !== null && !lit.includes('relay')
+  const unreadTotal = Object.values(threads).reduce((n, t) => n + t.unread, 0)
 
   return (
     <div id="screen">
       <div id="stage" style={{ '--stage-scale': scale }}>
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: 384,
-            height: 12,
-            background: 'var(--color-c00)',
-            borderBottom: '1px solid var(--color-c05)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            padding: '0 2px',
-            whiteSpace: 'nowrap',
-            zIndex: 700,
-          }}
-        >
-          <span style={{ color: 'var(--color-c12)' }}>FLAGGED</span>
-          <span style={{ color: 'var(--color-c06)' }}>D{day}</span>
-          <span style={{ color: 'var(--color-c08)' }}>CO {money(balance)}</span>
-          {day >= 4 && (
-            <span style={{ color: 'var(--color-c15)' }}>ME {money(personal)}</span>
-          )}
-          <span style={{ color: accuracy >= 80 ? 'var(--color-c10)' : 'var(--color-c14)' }}>
-            {accuracy}%
-          </span>
-          <span style={{ flex: 1 }} />
-          {tutActive &&
-            (skipAsk ? (
-              <>
-                <span style={{ color: 'var(--color-c14)' }}>SKIP?</span>
-                <button
-                  className="btn"
-                  onClick={() => {
-                    sfx.click()
-                    setTutSkip(true)
-                    setSkipAsk(false)
-                    setReview(null)
-                  }}
-                >
-                  Y
-                </button>
-                <button className="btn" onClick={() => { sfx.click(); setSkipAsk(false) }}>
-                  N
-                </button>
-              </>
-            ) : (
-              <button className="btn" onClick={() => { sfx.click(); setSkipAsk(true) }}>
-                SKIP TUT
+        <div id="camera" className={camDir === 'in' ? 'cam-in' : camDir === 'out' ? 'cam-out' : ''}>
+          <Scene
+            phoneState={phoneState}
+            phoneT={phoneT}
+            buzzSeq={buzzSeq}
+            unread={unreadTotal}
+            onPhone={openPhone}
+            locked={phoneDim || phase !== 'play'}
+          />
+
+          <div id="monitor">
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                width: 384,
+                height: 12,
+                background: 'var(--color-c00)',
+                borderBottom: '1px solid var(--color-c05)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2,
+                padding: '0 2px',
+                whiteSpace: 'nowrap',
+                zIndex: 700,
+              }}
+            >
+              <span style={{ color: 'var(--color-c12)' }}>FLAGGED</span>
+              <span style={{ color: 'var(--color-c06)' }}>D{day}</span>
+              <span style={{ color: 'var(--color-c08)' }}>CO {money(balance)}</span>
+              {day >= 4 && (
+                <span style={{ color: 'var(--color-c15)' }}>ME {money(personal)}</span>
+              )}
+              <span style={{ color: accuracy >= 80 ? 'var(--color-c10)' : 'var(--color-c14)' }}>
+                {accuracy}%
+              </span>
+              <span style={{ flex: 1 }} />
+              {tutActive &&
+                (skipAsk ? (
+                  <>
+                    <span style={{ color: 'var(--color-c14)' }}>SKIP?</span>
+                    <button
+                      className="btn"
+                      onClick={() => {
+                        sfx.click()
+                        setTutSkip(true)
+                        setSkipAsk(false)
+                        setReview(null)
+                      }}
+                    >
+                      Y
+                    </button>
+                    <button className="btn" onClick={() => { sfx.click(); setSkipAsk(false) }}>
+                      N
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn" onClick={() => { sfx.click(); setSkipAsk(true) }}>
+                    SKIP TUT
+                  </button>
+                ))}
+              <button className="btn" onClick={() => { sfx.click(); setShowRules(true) }}>
+                ?
               </button>
-            ))}
-          <button className="btn" onClick={() => { sfx.click(); setShowRules(true) }}>
-            ?
-          </button>
-          <button className="btn" onClick={() => { sfx.click(); setShowSettings(true) }}>
-            SET
-          </button>
-          <button
-            className="btn"
-            onClick={() => {
-              const m = !muted
-              setMutedState(m)
-              setMuted(m)
-              if (!m) sfx.click()
-            }}
-          >
-            {muted ? 'OFF' : 'SND'}
-          </button>
-        </div>
-
-        {zorder.map((id, i) => (
-          <Win
-            key={id}
-            id={id}
-            title={panes[id].title}
-            rect={wins[id]}
-            z={10 + i}
-            focused={focused === id}
-            badge={cur && cur.surface === id ? 1 : 0}
-            pulse={phase === 'play'}
-            dim={lit !== null && !lit.includes(id)}
-            scale={scale}
-            onFocus={focus}
-            onMove={move}
-            onMax={toggleMax}
-          >
-            {panes[id].node}
-          </Win>
-        ))}
-
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            top: DESK.bottom,
-            width: 384,
-            height: 216 - DESK.bottom,
-            background: 'var(--color-c00)',
-            borderTop: '1px solid var(--color-c05)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '0 3px',
-            zIndex: 700,
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            {flash ? (
-              <div style={{ color: 'var(--color-c14)' }}>{flash}</div>
-            ) : hintText ? (
-              <div
-                id="hintstrip"
-                onClick={stripClick}
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 3,
-                  cursor: 'pointer',
-                  minHeight: 18,
+              <button className="btn" onClick={() => { sfx.click(); setShowSettings(true) }}>
+                SET
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  const m = !muted
+                  setMutedState(m)
+                  setMuted(m)
+                  if (!m) sfx.click()
                 }}
               >
-                {hintAt > 0 && (
-                  <button
-                    className="btn"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      hintBack()
-                    }}
-                  >
-                    BACK
-                  </button>
-                )}
-                <div style={{ color: review !== null ? 'var(--color-c07)' : 'var(--color-c11)', flex: 1 }}>
-                  {hintText.slice(0, typedN)}
-                </div>
-                {showContinue && (
-                  <span
+                {muted ? 'OFF' : 'SND'}
+              </button>
+            </div>
+
+            {zorder.map((id, i) => (
+              <Win
+                key={id}
+                id={id}
+                title={panes[id].title}
+                rect={wins[id]}
+                z={10 + i}
+                focused={focused === id}
+                badge={cur && cur.surface === id ? 1 : 0}
+                pulse={phase === 'play'}
+                dim={lit !== null && !lit.includes(id)}
+                scale={scale}
+                onFocus={focus}
+                onMove={move}
+                onMax={toggleMax}
+              >
+                {panes[id].node}
+              </Win>
+            ))}
+
+            <div
+              style={{
+                position: 'absolute',
+                left: 0,
+                top: DESK.bottom,
+                width: 384,
+                height: 216 - DESK.bottom,
+                background: 'var(--color-c00)',
+                borderTop: '1px solid var(--color-c05)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                padding: '0 3px',
+                zIndex: 700,
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {flash ? (
+                  <div style={{ color: 'var(--color-c14)' }}>{flash}</div>
+                ) : hintText ? (
+                  <div
+                    id="hintstrip"
+                    onClick={stripClick}
                     style={{
-                      position: 'absolute',
-                      right: 0,
-                      bottom: 0,
-                      background: 'var(--color-c00)',
-                      paddingLeft: 2,
-                      color: 'var(--color-c12)',
-                      whiteSpace: 'nowrap',
+                      position: 'relative',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      cursor: 'pointer',
+                      minHeight: 18,
                     }}
                   >
-                    CLICK TO CONTINUE<span className="blink">_</span>
-                  </span>
+                    {hintAt > 0 && (
+                      <button
+                        className="btn"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          hintBack()
+                        }}
+                      >
+                        BACK
+                      </button>
+                    )}
+                    <div style={{ color: review !== null ? 'var(--color-c07)' : 'var(--color-c11)', flex: 1 }}>
+                      {hintText.slice(0, typedN)}
+                    </div>
+                    {showContinue && (
+                      <span
+                        style={{
+                          position: 'absolute',
+                          right: 0,
+                          bottom: 0,
+                          background: 'var(--color-c00)',
+                          paddingLeft: 2,
+                          color: 'var(--color-c12)',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        CLICK TO CONTINUE<span className="blink">_</span>
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ color: 'var(--color-c06)' }}>
+                      CASE {idx + 1}/{game.days[day].length} - VIA {cur.surface.toUpperCase()}
+                      {cur.target === 'personal' ? ' - TARGETS YOU' : ''}
+                    </div>
+                    <div style={{ color: 'var(--color-c09)' }}>{objectiveLine(cur)}</div>
+                  </>
                 )}
               </div>
-            ) : (
-              <>
-                <div style={{ color: 'var(--color-c06)' }}>
-                  CASE {idx + 1}/{game.days[day].length} - VIA {cur.surface.toUpperCase()}
-                  {cur.target === 'personal' ? ' - TARGETS YOU' : ''}
-                </div>
-                <div style={{ color: 'var(--color-c09)' }}>{cur.content.ask}</div>
-              </>
-            )}
+              {timeLeft !== null && (
+                <span
+                  className="t14"
+                  style={{ color: timeLeft <= 15 ? 'var(--color-c14)' : 'var(--color-c07)' }}
+                >
+                  {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+                </span>
+              )}
+              <button
+                className="btn btn-ok t14"
+                data-spot="approve"
+                style={{ padding: '2px 5px' }}
+                disabled={phase !== 'play'}
+                onClick={() => decide('approve')}
+              >
+                APPROVE
+              </button>
+              <button
+                className="btn btn-no t14"
+                data-spot="hold"
+                style={{ padding: '2px 5px' }}
+                disabled={phase !== 'play'}
+                onClick={() => decide('hold')}
+              >
+                HOLD
+              </button>
+            </div>
+
+            <div id="crt" />
+            <div id="monflick" />
           </div>
-          {timeLeft !== null && (
-            <span
-              className="t14"
-              style={{ color: timeLeft <= 15 ? 'var(--color-c14)' : 'var(--color-c07)' }}
-            >
-              {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-            </span>
+
+          {phoneState === 'open' && (
+            <Phone
+              threads={threads}
+              view={phoneView}
+              setView={viewThread}
+              activeName={cur ? thKey(cur.sender) : null}
+              busy={busy}
+              onSend={send}
+              suggest={suggest}
+              hlFirst={hlFirst}
+              onClose={closePhone}
+              dim={phoneDim}
+              aiOn={aiOn}
+            />
           )}
-          <button
-            className="btn btn-ok t14"
-            data-spot="approve"
-            style={{ padding: '2px 5px' }}
-            disabled={phase !== 'play'}
-            onClick={() => decide('approve')}
-          >
-            APPROVE
-          </button>
-          <button
-            className="btn btn-no t14"
-            data-spot="hold"
-            style={{ padding: '2px 5px' }}
-            disabled={phase !== 'play'}
-            onClick={() => decide('hold')}
-          >
-            HOLD
-          </button>
         </div>
 
         {spotCfg && (spotCfg.spots || spotCfg.arrow) && (
@@ -786,8 +929,6 @@ export default function App() {
         {showSettings && (
           <Settings onClose={() => setShowSettings(false)} onSaved={() => setAiOn(hasKey())} />
         )}
-
-        <div id="crt" />
       </div>
     </div>
   )
