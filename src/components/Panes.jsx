@@ -8,9 +8,9 @@ const hhmm = (ts) => {
   return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0')
 }
 
-function Row({ k, v, warn }) {
+function Row({ k, v, warn, spot }) {
   return (
-    <div style={{ display: 'flex', gap: 3 }}>
+    <div data-spot={spot} style={{ display: 'flex', gap: 3 }}>
       <span style={{ color: 'var(--color-c06)', flex: '0 0 50px' }}>{k}</span>
       <span
         style={{
@@ -32,9 +32,17 @@ function Head({ children }) {
   )
 }
 
-export function Relay({ c, chat, onSend, busy, aiOn }) {
+const SUGGESTED = [
+  'What city are you in right now?',
+  'What device are you messaging from?',
+  'Can I call you back on the number in our vendor file?',
+]
+
+export function Relay({ c, chat, onSend, busy, aiOn, suggest, hlFirst }) {
   const [text, setText] = useState('')
   const endRef = useRef(null)
+  const lastThem = chat.map((m) => m.from).lastIndexOf('them')
+  const unasked = SUGGESTED.filter((q) => !chat.some((m) => m.from === 'me' && m.text === q))
 
   useEffect(() => {
     const box = endRef.current && endRef.current.closest('.win-body')
@@ -65,7 +73,7 @@ export function Relay({ c, chat, onSend, busy, aiOn }) {
 
       <div style={{ flex: 1 }}>
         {chat.map((m, i) => (
-          <div key={i} style={{ marginBottom: 2 }}>
+          <div key={i} data-spot={i === lastThem ? 'reply-last' : undefined} style={{ marginBottom: 2 }}>
             <span style={{ color: m.from === 'me' ? 'var(--color-c07)' : 'var(--color-c15)' }}>
               {m.from === 'me' ? 'YOU: ' : c.sender.name.split(' ')[0].toUpperCase() + ': '}
             </span>
@@ -77,6 +85,29 @@ export function Relay({ c, chat, onSend, busy, aiOn }) {
         {busy && <div style={{ color: 'var(--color-c06)' }}>...</div>}
         <div ref={endRef} />
       </div>
+
+      {suggest && unasked.length > 0 && (
+        <div style={{ marginTop: 2 }}>
+          {unasked.map((q) => (
+            <button
+              key={q}
+              className={'btn' + (hlFirst && q === SUGGESTED[0] ? ' pulse-outline' : '')}
+              data-spot={q === SUGGESTED[0] ? 'suggest-0' : undefined}
+              disabled={busy}
+              style={{
+                display: 'block',
+                width: '100%',
+                textAlign: 'left',
+                marginBottom: 1,
+                whiteSpace: 'normal',
+              }}
+              onClick={() => onSend(q)}
+            >
+              {'> ' + q}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 2, marginTop: 2, position: 'sticky', bottom: 0 }}>
         <input
@@ -158,7 +189,7 @@ export function Ledger({ c, balance, personal, history, day, live }) {
           <Row k="METHOD" v={c.content.method.toUpperCase()} />
           <Row k="ACCT AGE" v={c.content.payeeAccountAgeDays + ' days'} />
           <Row k="TARGET" v={c.target === 'personal' ? 'YOUR ACCOUNT' : 'Meridian ops'} />
-          {c.content.memo && <Row k="MEMO" v={c.content.memo} />}
+          {c.content.memo && <Row k="MEMO" v={c.content.memo} spot="memo" />}
         </div>
       ) : (
         <div style={{ color: 'var(--color-c06)' }}>
@@ -200,9 +231,9 @@ export function Sentry({ c }) {
       <Row k="CONTACT" v={c.sender.knownContact ? 'in directory' : 'unrecognised'} warn={!c.sender.knownContact} />
 
       <Head>SESSION</Head>
-      <Row k="DEVICE" v={e.deviceHash} warn={devOdd} />
+      <Row k="DEVICE" v={e.deviceHash} warn={devOdd} spot="sentry-dev" />
       <Row k="KNOWN DEV" v={e.knownDevices.join(', ')} />
-      <Row k="LOCATION" v={e.ipCity + ', ' + e.ipCountry} warn={geoOdd} />
+      <Row k="LOCATION" v={e.ipCity + ', ' + e.ipCountry} warn={geoOdd} spot="sentry-loc" />
       <Row k="LAST SEEN" v={e.lastKnownCity + ' ' + hhmm(e.lastLoginTs)} />
       <Row k="ELAPSED" v={gapMin + ' min'} warn={geoOdd && gapMin < needMin} />
       {geoOdd && <Row k="TRAVEL" v={'needs ' + needMin + ' min'} warn={gapMin < needMin} />}

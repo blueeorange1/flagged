@@ -14,13 +14,6 @@ const START_PERSONAL = 12400
 const BREACH_COST = 18000
 const TIMER_SECONDS = 90
 
-const TOUR = [
-  ['ledger', 'This is LEDGER. The money. Pending requests wait here for you. Click it.'],
-  ['sentry', 'This is SENTRY. The truth. Every login, device and location. Click it.'],
-  ['inbox', 'This is INBOX. Email. Some of it is real. Click it.'],
-  ['relay', 'This is RELAY. Messages. Anyone can reach you here. Click it.'],
-]
-
 const DEFAULT_WINS = {
   relay: { x: 1, y: 13, w: 190, h: 88, max: false },
   inbox: { x: 193, y: 13, w: 190, h: 88, max: false },
@@ -29,6 +22,100 @@ const DEFAULT_WINS = {
 }
 
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
+
+function connectSegs(a, b) {
+  if (b.x + b.w / 2 < a.x + a.w / 2) [a, b] = [b, a]
+  const ax = a.x + a.w
+  const ay = Math.round(a.y + a.h / 2)
+  const bx = b.x
+  const by = Math.round(b.y + b.h / 2)
+  if (ax < bx - 2) {
+    const mid = Math.round((ax + bx) / 2)
+    return [
+      { left: ax, top: ay, width: mid - ax, height: 1 },
+      { left: mid, top: Math.min(ay, by), width: 1, height: Math.abs(by - ay) + 1 },
+      { left: mid, top: by, width: bx - mid, height: 1 },
+    ]
+  }
+  const cx = Math.round((a.x + a.w / 2 + b.x + b.w / 2) / 2)
+  const [t, m] = a.y < b.y ? [a, b] : [b, a]
+  return [{ left: cx, top: t.y + t.h, width: 1, height: Math.max(1, m.y - t.y - t.h) }]
+}
+
+function SpotOverlay({ spots, arrow, connect, scale }) {
+  const [rects, setRects] = useState({})
+  const key = [...new Set([...spots, ...(arrow ? [arrow] : []), ...(connect || [])])].join(',')
+
+  useEffect(() => {
+    const wanted = key ? key.split(',') : []
+    for (const id of wanted) {
+      if (id.startsWith('win-')) continue
+      const el = document.querySelector('[data-spot="' + id + '"]')
+      if (el) el.scrollIntoView({ block: 'nearest' })
+    }
+    function measure() {
+      const stage = document.getElementById('stage')
+      if (!stage) return
+      const sr = stage.getBoundingClientRect()
+      const out = {}
+      for (const id of wanted) {
+        const el = document.querySelector('[data-spot="' + id + '"]')
+        if (!el) continue
+        const r = el.getBoundingClientRect()
+        let { left, top, right, bottom } = r
+        const win = el.closest('.win')
+        if (win && !id.startsWith('win-')) {
+          const wr = win.getBoundingClientRect()
+          left = Math.max(left, wr.left)
+          top = Math.max(top, wr.top)
+          right = Math.min(right, wr.right)
+          bottom = Math.min(bottom, wr.bottom)
+          if (right <= left || bottom <= top) continue
+        }
+        out[id] = {
+          x: Math.round((left - sr.left) / scale),
+          y: Math.round((top - sr.top) / scale),
+          w: Math.round((right - left) / scale),
+          h: Math.round((bottom - top) / scale),
+        }
+      }
+      setRects((old) => (JSON.stringify(old) === JSON.stringify(out) ? old : out))
+    }
+    measure()
+    const iv = setInterval(measure, 120)
+    return () => clearInterval(iv)
+  }, [key, scale])
+
+  const ar = arrow ? rects[arrow] : null
+  const above = ar && ar.y >= 26
+  const ca = connect ? rects[connect[0]] : null
+  const cb = connect ? rects[connect[1]] : null
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 750 }}>
+      {spots.map((id) =>
+        rects[id] ? (
+          <div
+            key={id}
+            className="spot-box"
+            style={{ left: rects[id].x, top: rects[id].y, width: rects[id].w, height: rects[id].h }}
+          />
+        ) : null
+      )}
+      {ca && cb && connectSegs(ca, cb).map((s, i) => <div key={i} className="spot-line" style={s} />)}
+      {ar && (
+        <div
+          className={above ? 'chev' : 'chev chev-up'}
+          style={{ left: ar.x + Math.round(ar.w / 2) - 4, top: above ? ar.y - 11 : ar.y + ar.h + 3 }}
+        >
+          {(above ? [7, 5, 3, 1] : [1, 3, 5, 7]).map((w, i) => (
+            <div key={i} style={{ width: w, height: 2, background: 'var(--color-c12)', margin: '0 auto' }} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function App() {
   const [scale, setScale] = useState(3)
@@ -50,7 +137,6 @@ export default function App() {
   const [archive, setArchive] = useState([])
   const [result, setResult] = useState(null)
 
-  const [tour, setTour] = useState(0)
   const [hintStep, setHintStep] = useState(0)
   const [flash, setFlash] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
@@ -60,7 +146,6 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const [review, setReview] = useState(null)
   const hintHist = useRef([])
-  const pendingAsk = useRef(false)
 
   const [wins, setWins] = useState(DEFAULT_WINS)
   const [zorder, setZorder] = useState(['ledger', 'inbox', 'sentry', 'relay'])
@@ -96,7 +181,6 @@ export default function App() {
     setFlash(null)
     setReview(null)
     hintHist.current = []
-    pendingAsk.current = false
   }, [cur])
 
   useEffect(() => {
@@ -139,13 +223,6 @@ export default function App() {
     const t = setTimeout(() => setReady(true), 700)
     return () => clearTimeout(t)
   }, [typedDone, hintText])
-
-  useEffect(() => {
-    if (ready && review === null && pendingAsk.current && cur && cur.tut === 'ask' && hintStep === 0) {
-      pendingAsk.current = false
-      setHintStep(1)
-    }
-  }, [ready, review, cur, hintStep])
 
   function completeLine() {
     if (hintText) setTypedN(hintText.length)
@@ -199,45 +276,25 @@ export default function App() {
 
   function startShift() {
     sfx.click()
-    if (day === 1 && tour < TOUR.length) {
-      setPhase('tour')
-    } else {
-      setPhase('play')
-    }
+    setPhase('play')
   }
 
   function focus(id) {
     opened.current.add(id)
     setZorder((z) => (z[z.length - 1] === id ? z : [...z.filter((x) => x !== id), id]))
-    if (tutSkip) return
-    if (phase === 'tour' && id === TOUR[tour][0]) {
-      if (!typedDone) {
-        completeLine()
-        return
-      }
-      if (!ready || review !== null) return
-      sfx.open()
-      if (tour + 1 >= TOUR.length) {
-        setTour(TOUR.length)
-        setPhase('play')
-      } else {
-        setTour(tour + 1)
-      }
+    if (tutSkip || phase !== 'play' || !cur || !cur.tut) return
+    const wants =
+      (cur.tut === 'fraud' && ((hintStep === 0 && id === 'ledger') || (hintStep === 2 && id === 'sentry'))) ||
+      (cur.tut === 'legit' && hintStep === 0 && id === 'sentry') ||
+      (cur.tut === 'ask' && hintStep === 4 && id === 'sentry')
+    if (!wants) return
+    if (!typedDone) {
+      completeLine()
       return
     }
-    if (phase === 'play' && cur && cur.tut) {
-      const wants =
-        (cur.tut === 'fraud' && hintStep === 0 && id === 'ledger') ||
-        (cur.tut === 'fraud' && hintStep === 1 && id === 'sentry') ||
-        (cur.tut === 'legit' && hintStep === 0 && id === 'sentry')
-      if (!wants) return
-      if (!typedDone) {
-        completeLine()
-        return
-      }
-      if (!ready || review !== null) return
-      setHintStep((h) => h + 1)
-    }
+    if (!ready || review !== null) return
+    sfx.open()
+    setHintStep((h) => h + 1)
   }
 
   const move = useCallback((id, x, y) => {
@@ -250,17 +307,17 @@ export default function App() {
   }, [])
 
   async function send(text) {
-    if (!tutSkip && cur.tut === 'ask' && hintStep === 0) {
-      if (ready && review === null) setHintStep(1)
-      else pendingAsk.current = true
-    }
+    const askTut = !tutSkip && cur.tut === 'ask'
+    if (askTut) setHintStep((h) => (h < 3 ? 3 : h))
     setFlash(null)
+    setReview(null)
     setChat((c) => [...c, { from: 'me', text }])
     setBusy(true)
     const res = await aiReply(cur, chat, text)
     setBusy(false)
     sfx.msg()
     setChat((c) => [...c, { from: 'them', text: res.reply, leaked: res.contradictionLeaked }])
+    if (askTut) setHintStep((h) => (h < 4 ? 4 : h))
   }
 
   function decide(decision, expired = false) {
@@ -277,7 +334,7 @@ export default function App() {
       return
     }
     if (!tutSkip && c.tut === 'ask' && !chat.some((m) => m.from === 'me')) {
-      setFlash('Ask them something in RELAY first. Type a question and press SEND.')
+      setFlash('Ask them first. Tap a question in RELAY.')
       sfx.wrong()
       return
     }
@@ -384,7 +441,6 @@ export default function App() {
     setObeyedAll(0)
     setHistory([])
     setArchive([])
-    setTour(0)
     setTutSkip(false)
     setSkipAsk(false)
     setReview(null)
@@ -393,39 +449,74 @@ export default function App() {
   }
 
   function hintLine() {
-    if (tutSkip) return null
-    if (phase === 'tour') return { text: TOUR[tour][1], adv: 'action' }
-    if (phase !== 'play' || !cur || day !== 1) return null
-    const e = cur.evidence
+    if (tutSkip || phase !== 'play' || !cur || day !== 1) return null
     if (cur.tut === 'fraud') {
-      const gap = Math.round((e.sessionTs - e.lastLoginTs) / 60000)
       return [
-        { text: 'A payment is waiting in LEDGER. Click it and read the memo.', adv: 'action' },
-        { text: 'The memo says ' + cur.sender.name.split(' ')[0] + ' is in ' + e.lastKnownCity + '. Check SENTRY.', adv: 'action' },
-        { text: 'SENTRY: login from ' + e.ipCity + ' only ' + gap + ' min after ' + e.lastKnownCity + '. Impossible travel.', adv: 'click' },
-        { text: 'This is fraud. Press HOLD.', adv: 'none' },
+        { text: 'A payment is waiting in LEDGER. Click LEDGER.', adv: 'action', arrow: 'win-ledger', lit: ['ledger'] },
+        { text: 'Read the memo. He says he is in Bellhaven.', adv: 'click', spots: ['memo'], arrow: 'memo', lit: ['ledger'] },
+        { text: 'Is he really there? Click SENTRY.', adv: 'action', arrow: 'win-sentry', lit: ['ledger', 'sentry'] },
+        { text: 'LOCATION says Vasska minutes after Bellhaven. Impossible travel.', adv: 'click', spots: ['memo', 'sentry-loc'], connect: ['memo', 'sentry-loc'], lit: ['ledger', 'sentry'] },
+        { text: 'Nobody moves that fast. This is fraud. Press HOLD.', adv: 'none', spots: ['hold'], arrow: 'hold', lit: [] },
       ][hintStep]
     }
     if (cur.tut === 'legit') {
       return [
-        { text: 'Not everything is an attack. Check SENTRY again.', adv: 'action' },
-        { text: 'Same city, same device, known vendor. This one is real.', adv: 'click' },
-        { text: 'Blocking real work has a cost too. Press APPROVE.', adv: 'none' },
+        { text: 'Not every request is an attack. Click SENTRY.', adv: 'action', arrow: 'win-sentry', lit: ['sentry'] },
+        { text: 'Same city, same device, known vendor. This is real.', adv: 'click', spots: ['sentry-loc', 'sentry-dev'], lit: ['sentry'] },
+        { text: 'Blocking real work costs money too. Press APPROVE.', adv: 'none', spots: ['approve'], arrow: 'approve', lit: [] },
       ][hintStep]
     }
     if (cur.tut === 'ask') {
-      return [
-        { text: 'Not sure? Ask them in RELAY. Real people answer consistently.', adv: 'action' },
-        { text: 'Compare their answers with SENTRY, then make your call.', adv: 'none' },
-      ][hintStep]
+      if (hintStep <= 3) {
+        return [
+          { text: 'You cannot tell from the paperwork alone. Ask them directly.', adv: 'click', arrow: 'win-relay', lit: ['relay'] },
+          { text: 'Real people answer consistently. Liars have to make things up.', adv: 'click', lit: ['relay'] },
+          { text: 'Ask where they are.', adv: 'none', spots: ['suggest-0'], arrow: 'suggest-0', lit: ['relay'] },
+          { text: 'Wait for the reply.', adv: 'none', lit: ['relay'] },
+        ][hintStep]
+      }
+      const q = (chat.find((m) => m.from === 'me') || { text: '' }).text.toLowerCase()
+      const dev = q.includes('device')
+      const generic = !dev && !q.includes('city') && !q.includes('where')
+      if (hintStep === 4) {
+        return {
+          text: generic
+            ? 'Read their answer. Then click SENTRY.'
+            : dev
+              ? 'They said LAP-8812. Now look at SENTRY.'
+              : 'They said Bellhaven. Now look at SENTRY.',
+          adv: 'action',
+          spots: ['reply-last'],
+          arrow: 'reply-last',
+          lit: ['relay', 'sentry'],
+        }
+      }
+      const line = dev ? 'sentry-dev' : 'sentry-loc'
+      return {
+        text: generic
+          ? 'Their story does not match SENTRY. Press HOLD.'
+          : dev
+            ? 'SENTRY shows UNK-5521. They just lied to you. Press HOLD.'
+            : 'SENTRY says Vasska. They just lied to you. Press HOLD.',
+        adv: 'none',
+        spots: generic ? ['reply-last', 'hold'] : ['reply-last', line, 'hold'],
+        connect: generic ? undefined : ['reply-last', line],
+        arrow: 'hold',
+        lit: ['relay', 'sentry'],
+      }
     }
-    return { text: 'You are on your own now.', adv: 'none' }
+    return null
   }
+
+  const suggest = tutSkip || !cur || cur.tut !== 'ask' || hintStep >= 2
+  const hlFirst = !tutSkip && cur && cur.tut === 'ask' && hintStep === 2
 
   const panes = {
     relay: {
       title: 'RELAY',
-      node: <Relay c={cur} chat={chat} onSend={send} busy={busy} aiOn={aiOn} />,
+      node: (
+        <Relay c={cur} chat={chat} onSend={send} busy={busy} aiOn={aiOn} suggest={suggest} hlFirst={hlFirst} />
+      ),
     },
     inbox: { title: 'INBOX', node: <Inbox c={cur} archive={archive} /> },
     ledger: {
@@ -445,10 +536,11 @@ export default function App() {
   }
 
   const focused = zorder[zorder.length - 1]
-  const tourTarget = phase === 'tour' ? TOUR[tour][0] : null
   const hintAt = review === null ? hintHist.current.length - 1 : review
   const showContinue = ready && (review !== null || (hintObj && hintObj.adv === 'click'))
-  const tutActive = day === 1 && !tutSkip && (phase === 'tour' || (phase === 'play' && cur && cur.tut))
+  const tutActive = day === 1 && !tutSkip && phase === 'play' && cur && cur.tut
+  const spotCfg = review === null && !flash ? hintObj : null
+  const lit = spotCfg && spotCfg.lit ? spotCfg.lit : null
 
   return (
     <div id="screen">
@@ -491,10 +583,6 @@ export default function App() {
                     setTutSkip(true)
                     setSkipAsk(false)
                     setReview(null)
-                    if (phase === 'tour') {
-                      setTour(TOUR.length)
-                      setPhase('play')
-                    }
                   }}
                 >
                   Y
@@ -537,8 +625,7 @@ export default function App() {
             focused={focused === id}
             badge={cur && cur.surface === id ? 1 : 0}
             pulse={phase === 'play'}
-            dim={tourTarget !== null && id !== tourTarget}
-            ring={tourTarget === id}
+            dim={lit !== null && !lit.includes(id)}
             scale={scale}
             onFocus={focus}
             onMove={move}
@@ -630,6 +717,7 @@ export default function App() {
           )}
           <button
             className="btn btn-ok t14"
+            data-spot="approve"
             style={{ padding: '2px 5px' }}
             disabled={phase !== 'play'}
             onClick={() => decide('approve')}
@@ -638,6 +726,7 @@ export default function App() {
           </button>
           <button
             className="btn btn-no t14"
+            data-spot="hold"
             style={{ padding: '2px 5px' }}
             disabled={phase !== 'play'}
             onClick={() => decide('hold')}
@@ -645,6 +734,15 @@ export default function App() {
             HOLD
           </button>
         </div>
+
+        {spotCfg && (spotCfg.spots || spotCfg.arrow) && (
+          <SpotOverlay
+            spots={spotCfg.spots || []}
+            arrow={spotCfg.arrow}
+            connect={spotCfg.connect}
+            scale={scale}
+          />
+        )}
 
         {phase === 'brief' && <Brief day={day} onStart={startShift} />}
         {phase === 'result' && <Result result={result} onNext={next} />}

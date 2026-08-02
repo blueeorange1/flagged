@@ -166,7 +166,7 @@ export function GameOver({ balance, personal, accuracy, obeyed, onRestart }) {
 const HOW_TO_PLAY = [
   'Requests arrive in RELAY, INBOX or LEDGER. The flashing window has the case.',
   'SENTRY is the truth: every login, device and city.',
-  'Not sure? Ask the sender in RELAY. Real people answer consistently.',
+  'Not sure? Ask the sender in RELAY. Tap a suggested question or type your own.',
   'APPROVE sends it. HOLD blocks it. Wrong either way costs you.',
 ]
 

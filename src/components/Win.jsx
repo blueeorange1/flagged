@@ -16,7 +16,6 @@ export default function Win({
   onMove,
   onMax,
   dim,
-  ring,
   pulse,
   children,
 }) {
@@ -51,7 +50,8 @@ export default function Win({
 
   return (
     <div
-      className={'win' + (focused ? ' win-focused' : '') + (ring ? ' win-ring' : '')}
+      className={'win' + (focused ? ' win-focused' : '')}
+      data-spot={'win-' + id}
       style={{
         ...box,
         zIndex: z,
