@@ -6,17 +6,5 @@
       "Bash(npm *)",
       "Bash(vercel *)"
     ]
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\\.claude\\autopush.bat\""
-          }
-        ]
-      }
-    ]
   }
 }

@@ -1,10 +1,3 @@
 @echo off
-cd /d "%CLAUDE_PROJECT_DIR%"
-git add -A
-git diff --cached --quiet
-if %errorlevel%==0 exit /b 0
-set N=1
-for /f %%i in ('git rev-list --count HEAD 2^>nul') do set /a N=%%i+1
-git commit -q -m "commit %N%"
-git push -q origin HEAD
+rem Disabled 2026-08-02 by request. Original auto-commit/push body is in cdf448f.
 exit /b 0
