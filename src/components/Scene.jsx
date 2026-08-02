@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { STAGE, PHONE, bakeRoom, resolvePalette, drawPhoneClosed, drawPickup } from '../lib/scene.js'
+import { STAGE, PHONE, bakeLayers, resolvePalette, drawPhoneClosed, drawPickup } from '../lib/scene.js'
 import { sfx } from '../lib/audio.js'
 
 const LIFT_MS = 1200
@@ -30,7 +30,7 @@ export default function Scene({ phoneState, phoneT, buzzSeq, unread, onPhone, lo
 
   useEffect(() => {
     palRef.current = resolvePalette()
-    roomRef.current = bakeRoom(palRef.current)
+    roomRef.current = bakeLayers(palRef.current)
     sigRef.current = ''
     let raf
     function frame(now) {
@@ -69,7 +69,7 @@ export default function Scene({ phoneState, phoneT, buzzSeq, unread, onPhone, lo
       sigRef.current = sig
 
       const g = cv.getContext('2d')
-      g.drawImage(roomRef.current, 0, 0)
+      for (const l of roomRef.current) g.drawImage(l, 0, 0)
       if (st === 'closed') drawPhoneClosed(g, P, dx, dy)
       else if (st === 'lift') drawPickup(g, P, Math.min(1, (now - t0) / LIFT_MS))
       else if (st === 'drop') drawPickup(g, P, Math.max(0.01, 1 - (now - t0) / DROP_MS))

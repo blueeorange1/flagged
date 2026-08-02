@@ -1,6 +1,9 @@
 import { useRef } from 'react'
 
-export const DESK = { top: 12, bottom: 194, w: 384 }
+export const DESK = { top: 12, bottom: 248, w: 480, h: 270 }
+
+const MIN_W = 120
+const MIN_H = 70
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 
@@ -14,6 +17,7 @@ export default function Win({
   scale,
   onFocus,
   onMove,
+  onSize,
   onMax,
   dim,
   pulse,
@@ -42,6 +46,22 @@ export default function Win({
     drag.current = null
     if (e.currentTarget.hasPointerCapture(e.pointerId))
       e.currentTarget.releasePointerCapture(e.pointerId)
+  }
+
+  function onSizeDown(e) {
+    e.stopPropagation()
+    onFocus(id)
+    if (rect.max) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { sx: e.clientX, sy: e.clientY, ow: rect.w, oh: rect.h, size: true }
+  }
+
+  function onSizeMove(e) {
+    const d = drag.current
+    if (!d || !d.size) return
+    const nw = d.ow + (e.clientX - d.sx) / scale
+    const nh = d.oh + (e.clientY - d.sy) / scale
+    onSize(id, clamp(nw, MIN_W, DESK.w - rect.x), clamp(nh, MIN_H, DESK.bottom - rect.y))
   }
 
   const box = rect.max
@@ -84,6 +104,23 @@ export default function Win({
         </span>
       </div>
       <div className="win-body">{children}</div>
+      {!rect.max && (
+        <div
+          onPointerDown={onSizeDown}
+          onPointerMove={onSizeMove}
+          onPointerUp={onUp}
+          style={{
+            position: 'absolute',
+            right: 0,
+            bottom: 0,
+            width: 7,
+            height: 7,
+            cursor: 'nwse-resize',
+            background:
+              'linear-gradient(135deg, transparent 0 50%, var(--color-c06) 50% 100%)',
+          }}
+        />
+      )}
     </div>
   )
 }

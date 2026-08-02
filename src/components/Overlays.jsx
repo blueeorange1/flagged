@@ -6,7 +6,7 @@ import { getKey, setKey } from '../lib/ai.js'
 
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
 
-function Modal({ title, children, w = 260 }) {
+function Modal({ title, children, w = 320 }) {
   return (
     <div
       style={{
@@ -22,7 +22,7 @@ function Modal({ title, children, w = 260 }) {
       <div
         style={{
           width: w,
-          maxHeight: 190,
+          maxHeight: 340,
           overflowY: 'auto',
           background: 'var(--color-c01)',
           border: '1px solid var(--color-c07)',

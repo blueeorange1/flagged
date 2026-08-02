@@ -20,9 +20,9 @@ const LIFT_MS = 1200
 const DROP_MS = 600
 
 const DEFAULT_WINS = {
-  inbox: { x: 1, y: 13, w: 190, h: 88, max: false },
-  ledger: { x: 1, y: 103, w: 190, h: 88, max: false },
-  sentry: { x: 193, y: 13, w: 190, h: 178, max: false },
+  inbox: { x: 2, y: 14, w: 234, h: 112, max: false },
+  ledger: { x: 2, y: 128, w: 234, h: 118, max: false },
+  sentry: { x: 238, y: 14, w: 240, h: 232, max: false },
 }
 
 const SYS_SENDER = {
@@ -55,14 +55,14 @@ function connectSegs(a, b) {
   if (ax < bx - 2) {
     const mid = Math.round((ax + bx) / 2)
     return [
-      { left: ax, top: ay, width: mid - ax, height: 1 },
-      { left: mid, top: Math.min(ay, by), width: 1, height: Math.abs(by - ay) + 1 },
-      { left: mid, top: by, width: bx - mid, height: 1 },
+      { left: ax, top: ay, width: mid - ax, height: 2 },
+      { left: mid, top: Math.min(ay, by), width: 2, height: Math.abs(by - ay) + 2 },
+      { left: mid, top: by, width: bx - mid, height: 2 },
     ]
   }
   const cx = Math.round((a.x + a.w / 2 + b.x + b.w / 2) / 2)
   const [t, m] = a.y < b.y ? [a, b] : [b, a]
-  return [{ left: cx, top: t.y + t.h, width: 1, height: Math.max(1, m.y - t.y - t.h) }]
+  return [{ left: cx, top: t.y + t.h, width: 2, height: Math.max(2, m.y - t.y - t.h) }]
 }
 
 function SpotOverlay({ spots, arrow, connect, scale }) {
@@ -81,6 +81,14 @@ function SpotOverlay({ spots, arrow, connect, scale }) {
       if (!stage) return
       const sr = stage.getBoundingClientRect()
       const out = {}
+      const put = (id, left, top, right, bottom) => {
+        out[id] = {
+          x: Math.round((left - sr.left) / scale),
+          y: Math.round((top - sr.top) / scale),
+          w: Math.round((right - left) / scale),
+          h: Math.round((bottom - top) / scale),
+        }
+      }
       for (const id of wanted) {
         const el = document.querySelector('[data-spot="' + id + '"]')
         if (!el) continue
@@ -95,12 +103,12 @@ function SpotOverlay({ spots, arrow, connect, scale }) {
           bottom = Math.min(bottom, wr.bottom)
           if (right <= left || bottom <= top) continue
         }
-        out[id] = {
-          x: Math.round((left - sr.left) / scale),
-          y: Math.round((top - sr.top) / scale),
-          w: Math.round((right - left) / scale),
-          h: Math.round((bottom - top) / scale),
-        }
+        put(id, left, top, right, bottom)
+      }
+      const strip = document.getElementById('hintstrip')
+      if (strip) {
+        const r = strip.getBoundingClientRect()
+        put('@hint', r.left, r.top, r.right, r.bottom)
       }
       setRects((old) => (JSON.stringify(old) === JSON.stringify(out) ? old : out))
     }
@@ -110,12 +118,32 @@ function SpotOverlay({ spots, arrow, connect, scale }) {
   }, [key, scale])
 
   const ar = arrow ? rects[arrow] : null
-  const above = ar && ar.y >= 26
+  const above = ar && ar.y >= 30
   const ca = connect ? rects[connect[0]] : null
   const cb = connect ? rects[connect[1]] : null
 
+  // dark scrim over everything except the highlighted rects and the hint strip
+  const holes = Object.values(rects)
+  const pad = 3
+  const scrimPath =
+    `M0 0H${STAGE.w}V${STAGE.h}H0Z` +
+    holes
+      .map((r) => {
+        const x = Math.max(0, r.x - pad)
+        const y = Math.max(0, r.y - pad)
+        const x2 = Math.min(STAGE.w, r.x + r.w + pad)
+        const y2 = Math.min(STAGE.h, r.y + r.h + pad)
+        return `M${x} ${y}H${x2}V${y2}H${x}Z`
+      })
+      .join('')
+
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 750 }}>
+      {holes.length > 0 && (
+        <svg width={STAGE.w} height={STAGE.h} style={{ position: 'absolute', inset: 0 }}>
+          <path className="spot-scrim" fillRule="evenodd" d={scrimPath} />
+        </svg>
+      )}
       {spots.map((id) =>
         rects[id] ? (
           <div
@@ -129,9 +157,9 @@ function SpotOverlay({ spots, arrow, connect, scale }) {
       {ar && (
         <div
           className={above ? 'chev' : 'chev chev-up'}
-          style={{ left: ar.x + Math.round(ar.w / 2) - 4, top: above ? ar.y - 11 : ar.y + ar.h + 3 }}
+          style={{ left: ar.x + Math.round(ar.w / 2) - 6, top: above ? ar.y - 17 : ar.y + ar.h + 4 }}
         >
-          {(above ? [7, 5, 3, 1] : [1, 3, 5, 7]).map((w, i) => (
+          {(above ? [11, 9, 7, 5, 3, 1] : [1, 3, 5, 7, 9, 11]).map((w, i) => (
             <div key={i} style={{ width: w, height: 2, background: 'var(--color-c12)', margin: '0 auto' }} />
           ))}
         </div>
@@ -195,8 +223,8 @@ export default function App() {
 
   useEffect(() => {
     function fit() {
-      const s = Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h)
-      setScale(Math.max(1, Math.min(2, Math.floor(s))))
+      // fill the viewport edge to edge; letterbox only if the aspect differs
+      setScale(Math.min(window.innerWidth / STAGE.w, window.innerHeight / STAGE.h))
     }
     fit()
     window.addEventListener('resize', fit)
@@ -389,6 +417,10 @@ export default function App() {
 
   const move = useCallback((id, x, y) => {
     setWins((w) => ({ ...w, [id]: { ...w[id], x, y } }))
+  }, [])
+
+  const size = useCallback((id, w, h) => {
+    setWins((ws) => ({ ...ws, [id]: { ...ws[id], w, h } }))
   }, [])
 
   const toggleMax = useCallback((id) => {
@@ -689,8 +721,8 @@ export default function App() {
                 position: 'absolute',
                 left: 0,
                 top: 0,
-                width: 384,
-                height: 12,
+                width: DESK.w,
+                height: DESK.top,
                 background: 'var(--color-c00)',
                 borderBottom: '1px solid var(--color-c05)',
                 display: 'flex',
@@ -754,20 +786,22 @@ export default function App() {
               </button>
             </div>
 
-            {zorder.map((id, i) => (
+            {/* fixed render order so focusing never moves DOM nodes (would drop pointer capture mid-drag) */}
+            {['inbox', 'ledger', 'sentry'].map((id) => (
               <Win
                 key={id}
                 id={id}
                 title={panes[id].title}
                 rect={wins[id]}
-                z={10 + i}
+                z={10 + zorder.indexOf(id)}
                 focused={focused === id}
                 badge={cur && cur.surface === id ? 1 : 0}
                 pulse={phase === 'play'}
                 dim={lit !== null && !lit.includes(id)}
-                scale={scale}
+                scale={scale * (phoneState === 'closed' ? 1 : 1.15)}
                 onFocus={focus}
                 onMove={move}
+                onSize={size}
                 onMax={toggleMax}
               >
                 {panes[id].node}
@@ -779,8 +813,8 @@ export default function App() {
                 position: 'absolute',
                 left: 0,
                 top: DESK.bottom,
-                width: 384,
-                height: 216 - DESK.bottom,
+                width: DESK.w,
+                height: DESK.h - DESK.bottom,
                 background: 'var(--color-c00)',
                 borderTop: '1px solid var(--color-c05)',
                 display: 'flex',

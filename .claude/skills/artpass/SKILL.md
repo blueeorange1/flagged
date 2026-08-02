@@ -9,31 +9,58 @@ The look is non-negotiable. Anything that breaks a rule below is a bug.
 
 ## Stage and scene
 
-The stage is 640x360, CSS-scaled 2x with `image-rendering: pixelated`.
-It shows a first-person cubicle: back wall, angled divider, desk, and a
-monitor. Do NOT revert to the old flat 384x216 desktop.
+The stage is 960x540 (16:9), scaled with a NON-integer
+`--stage-scale = min(vw/960, vh/540)` so the scene fills the viewport
+edge to edge, `image-rendering: pixelated`. Do NOT revert to a fixed
+integer scale or a centered island.
 
-- The room is drawn ONCE to an offscreen canvas in `src/lib/scene.js`
-  (`bakeRoom`): walls, divider, desk, clutter, monitor bezel, lamp pool,
-  monitor glow, dither, vignette, and all shadows are BAKED there.
-  `src/components/Scene.jsx` blits that cache each frame and draws only
-  what moves: the face-down phone, the buzz offsets, the pickup hand.
+It is a dark bedroom desk at night: monitor dominant and centered, desk
+running off both side edges, poster wall behind, lamp on the right,
+keyboard filling the lower third.
+
+- The scene is baked ONCE into FOUR depth-layer offscreen canvases in
+  `src/lib/scene.js` (`bakeLayers` -> [far, mid, near, edge]):
+  - FAR: wall, posters, pinned papers - darkest, lowest contrast.
+  - MID: desk surface, monitor bezel + neck, lamp, shelf, speaker,
+    cold monitor-glow trapezoid, warm lamp pool.
+  - NEAR: keyboard, mousepad + mouse, mug, pen cup, papers, cables,
+    phone shadow - brightest, most detail.
+  - EDGE: desk lip across the very bottom + stepped dither vignette on
+    all four corners. Framing layer, blitted last of the statics.
+  `src/components/Scene.jsx` blits the four caches back to front each
+  dirty frame (signature-skip when nothing changed), then draws only
+  what moves: the face-down phone, buzz offsets, the pickup frames.
+- There is NO hand. Pickup is 6 stepped frames of the phone itself
+  rising and rotating flat-on (`drawPickup`), ending on the `PANEL`
+  rect so the DOM phone face swaps in seamlessly.
 - Never rebuild the room as live CSS 3D transforms with many children,
   never animate box-shadow, and never lay a repeating-conic-gradient or
   large tiled gradient over the full frame. Dithering lives in the baked
-  canvas only.
+  canvases only.
 - The camera dolly is a transform on the single `#camera` wrapper
-  (`will-change: transform; backface-visibility: hidden`), animated with
-  `steps()` so it composites instead of repainting.
-- The monitor UI is the `#monitor` div at (96,42), 384x216. All window
-  layout inside it is still authored at 384x216 whole pixels. The CRT
-  scanline/vignette overlay (`#crt`) and the flicker layer (`#monflick`)
-  live INSIDE `#monitor` and must never cover the desk or the room.
+  (`will-change: transform; backface-visibility: hidden`,
+  transform-origin 810px 320px), animated with `steps()` so it
+  composites instead of repainting.
+- The monitor UI is the `#monitor` div at (240,60), 480x270. All window
+  layout inside it is authored at 480x270 whole pixels (`DESK` in
+  `Win.jsx`: usable area y 12..248). Windows drag AND resize (7x7
+  bottom-right handle, min 120x70), clamped inside the bezel; render
+  order in App.jsx is FIXED with z-index from `zorder` - reordering DOM
+  nodes on focus drops pointer capture mid-drag. The CRT overlay
+  (`#crt`) and flicker layer (`#monflick`) live INSIDE `#monitor` and
+  must never cover the desk or the room.
 - The phone (RELAY) rests face down on the desk at the rect exported as
   `PHONE`; its lifted DOM face is `#phone-panel` at the `PANEL` rect.
   Layout constants come from `src/lib/scene.js` - do not hardcode copies.
+- Tutorial spotlight = 2px pulsing `.spot-box` outline PLUS an SVG
+  scrim (`.spot-scrim`, evenodd path with holes over every lit target
+  and the hint strip), 2px connector segments, 12px stepped chevron.
+  The scrim renders only when it has holes (no first-frame flash).
 - Canvas code resolves the palette from the CSS variables at runtime
   (`resolvePalette`), so the palette stays defined in exactly one place.
+- Perf budget: 16.7ms/frame. Measured 2026-08 at avg 16.67ms / max
+  16.8ms with the monitor UI live. Anything that pushes a static element
+  into the per-frame path is a bug.
 
 Positions and sizes are whole numbers at 1x so nothing lands on a half
 pixel.

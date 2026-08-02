@@ -1,7 +1,10 @@
-export const STAGE = { w: 640, h: 360 }
-export const MON = { x: 96, y: 42, w: 384, h: 216 }
-export const PHONE = { x: 516, y: 296, w: 70, h: 44 }
-export const PANEL = { x: 482, y: 40, w: 154, h: 300 }
+export const STAGE = { w: 960, h: 540 }
+export const MON = { x: 240, y: 60, w: 480, h: 270 }
+export const PHONE = { x: 820, y: 450, w: 88, h: 56 }
+export const PANEL = { x: 724, y: 58, w: 208, h: 432 }
+
+const DESK_Y = 332
+const LIP_Y = 516
 
 export function resolvePalette() {
   const cs = getComputedStyle(document.documentElement)
@@ -10,7 +13,7 @@ export function resolvePalette() {
   )
 }
 
-export function bakeRoom(P) {
+function layer() {
   const cv = document.createElement('canvas')
   cv.width = STAGE.w
   cv.height = STAGE.h
@@ -25,156 +28,245 @@ export function bakeRoom(P) {
     for (let yy = 0; yy < h; yy += 2)
       for (let xx = yy % 4 === 0 ? 0 : 2; xx < w; xx += 4) g.fillRect(x + xx, y + yy, 2, 2)
   }
-  // 25% sparse dots
+  // sparse dots
   const dots = (x, y, w, h, c, sx = 8, sy = 6) => {
     g.fillStyle = c
     for (let yy = 0; yy < h; yy += sy)
       for (let xx = (yy / sy) % 2 ? sx / 2 : 0; xx < w; xx += sx) g.fillRect(x + xx, y + yy, 1, 1)
   }
+  return { cv, g, R, dith, dots }
+}
 
-  const horizon = 278
+// FAR: back wall covered in posters and pinned papers. Darkest, least detail.
+function bakeFar(P) {
+  const { cv, R, dith, dots } = layer()
+  R(0, 0, 960, DESK_Y + 8, P[0])
+  dots(0, 0, 960, DESK_Y, P[1], 12, 8)
 
-  // back wall + fabric texture
-  R(0, 0, 640, horizon, P[1])
-  dots(0, 0, 640, horizon, P[5])
-  dots(3, 3, 640, horizon, P[0], 16, 10)
+  // faint warm wash on the wall behind the lamp (right)
+  dith(750, 150, 210, DESK_Y - 150, P[1])
+  dith(800, 190, 160, DESK_Y - 190, P[5])
 
-  // warm lamp pool, upper left, stepped falloff
-  dith(0, 0, 300, 40, P[3])
-  dith(0, 0, 240, 90, P[3])
-  dith(0, 0, 170, 140, P[3])
-  dith(0, 0, 90, 190, P[3])
-  dith(6, 4, 120, 60, P[4])
-  dith(6, 4, 60, 110, P[4])
-
-  // side divider, left, angled top edge for depth
-  for (let x = 0; x < 88; x += 4) {
-    const top = Math.round(x * 0.55)
-    R(x, top, 4, horizon - top, P[5])
-    R(x, top, 4, 2, P[6])
+  const poster = (x, y, w, h, edge) => {
+    R(x, y, w, h, P[1])
+    R(x, y, w, 1, P[2])
+    R(x, y, 1, h, P[2])
+    for (let i = 0; i < Math.floor(h / 14) - 1; i++) R(x + 5, y + 10 + i * 14, w - 14, 1, P[2])
+    if (edge) R(x + w - 1, y, 1, h, P[5])
   }
-  dots(0, 60, 88, horizon - 60, P[2])
-  R(86, 48, 2, horizon - 48, P[0])
-  // pinned notes on divider
-  R(18, 96, 26, 22, P[4])
-  R(20, 98, 22, 2, P[2])
-  R(20, 104, 16, 1, P[2])
-  R(20, 108, 19, 1, P[2])
-  R(29, 94, 3, 3, P[14])
-  R(30, 150, 22, 28, P[7])
-  R(32, 156, 16, 1, P[2])
-  R(32, 161, 13, 1, P[2])
-  R(32, 166, 15, 1, P[2])
-  R(39, 148, 3, 3, P[13])
+  poster(36, 28, 92, 124)
+  poster(148, 64, 72, 92)
+  poster(250, 6, 112, 36)
+  poster(380, 4, 140, 38)
+  poster(540, 10, 84, 32)
+  poster(646, 40, 66, 88)
+  poster(760, 34, 108, 138, true)
+  poster(884, 64, 58, 92, true)
+  // small pinned papers
+  const paper = (x, y, w, h, pin) => {
+    R(x, y, w, h, P[1])
+    R(x + 3, y + 5, w - 6, 1, P[2])
+    R(x + 3, y + 10, w - 9, 1, P[2])
+    if (pin) R(x + Math.floor(w / 2), y - 2, 3, 3, pin)
+  }
+  paper(58, 172, 44, 52)
+  paper(118, 190, 36, 44)
+  paper(228, 168, 40, 46)
+  paper(742, 190, 38, 46, P[3])
+  paper(796, 182, 46, 54, P[3])
+  paper(880, 176, 40, 44)
+  return cv
+}
 
-  // pinned notes on back wall, right of monitor
-  R(540, 70, 30, 24, P[11])
-  R(544, 76, 20, 1, P[5])
-  R(544, 81, 14, 1, P[5])
-  R(553, 68, 3, 3, P[14])
-  R(548, 120, 24, 30, P[7])
-  R(551, 126, 16, 1, P[2])
-  R(551, 131, 18, 1, P[2])
-  R(551, 136, 12, 1, P[2])
-  R(558, 118, 3, 3, P[13])
-  R(520, 180, 34, 20, P[4])
-  R(524, 186, 24, 1, P[2])
-  R(524, 191, 18, 1, P[2])
-  R(535, 178, 3, 3, P[14])
+// MID: desk surface, monitor body, lamp, speaker, shelf. Mid brightness.
+function bakeMid(P) {
+  const { cv, R, dith, dots } = layer()
 
   // desk
-  R(0, horizon, 640, 360 - horizon, P[1])
-  R(0, horizon, 640, 2, P[6])
-  R(0, horizon + 2, 640, 2, P[2])
-  dots(0, horizon + 6, 640, 360 - horizon - 6, P[5], 10, 4)
-  // lamp pool on desk, left
-  dith(0, horizon + 2, 150, 82, P[3])
-  dith(0, horizon + 2, 80, 82, P[4])
-  // monitor glow on desk, cold, widening toward viewer
-  dith(150, horizon + 4, 300, 20, P[2])
-  dith(130, horizon + 24, 340, 26, P[2])
-  dith(110, horizon + 50, 380, 32, P[2])
-  dith(220, horizon + 6, 160, 40, P[6])
-
-  // hard shadows on desk (monitor, keyboard, phone area lit later)
-  R(120, horizon + 14, 370, 8, P[0])
-  R(196, 342, 216, 6, P[0])
-
-  // monitor: bezel, screen hole, neck, base
-  R(82, 28, 412, 248, P[0])
-  R(86, 32, 404, 240, P[2])
-  R(88, 34, 400, 236, P[0])
-  // screen backing (DOM sits exactly on MON rect)
-  R(MON.x, MON.y, MON.w, MON.h, P[0])
-  R(468, 268, 3, 3, P[10]) // power led
-  R(268, 276, 40, 12, P[0])
-  R(270, 276, 4, 12, P[2])
-  R(240, 288, 96, 8, P[0])
-  R(240, 288, 96, 2, P[2])
-
-  // cables: monitor to desk edge, stepped
-  for (let i = 0; i < 9; i++) R(336 + i * 8, 292 + i * 7, 8, 3, P[0])
-  for (let i = 0; i < 5; i++) R(200 - i * 10, 336 + i * 4, 10, 3, P[0])
-
-  // keyboard
-  R(196, 312, 216, 30, P[0])
-  R(198, 314, 212, 26, P[2])
-  for (let ky = 0; ky < 3; ky++)
-    for (let kx = 0; kx < 19; kx++) R(202 + kx * 11, 317 + ky * 7, 8, 4, P[5])
-  R(258, 338, 90, 3, P[5]) // space bar
-  dith(198, 314, 212, 6, P[6])
-
-  // mousepad + mouse
-  R(428, 306, 62, 40, P[5])
-  R(428, 306, 62, 2, P[2])
-  R(446, 316, 18, 26, P[2])
-  R(446, 316, 18, 4, P[6])
-  R(454, 318, 2, 6, P[0])
-
-  // papers, left of keyboard
-  R(96, 300, 74, 26, P[7])
-  R(104, 296, 66, 22, P[8])
-  R(110, 301, 44, 1, P[2])
-  R(110, 305, 50, 1, P[2])
-  R(110, 309, 38, 1, P[2])
-  R(150, 322, 34, 14, P[11])
-  R(154, 326, 22, 1, P[5])
-
-  // coffee ring + mug
-  g.fillStyle = P[3]
-  const cx = 120,
-    cy = 338
-  for (let a = 0; a < 16; a++) {
-    const x = Math.round(cx + Math.cos((a / 16) * Math.PI * 2) * 9)
-    const y = Math.round(cy + Math.sin((a / 16) * Math.PI * 2) * 5)
-    g.fillRect(x, y, 2, 1)
+  R(0, DESK_Y, 960, 540 - DESK_Y, P[1])
+  R(0, DESK_Y, 960, 1, P[2])
+  R(300, DESK_Y, 360, 1, P[6])
+  dots(0, DESK_Y + 4, 960, 540 - DESK_Y - 4, P[5], 12, 5)
+  // perspective seams converging toward a point behind the monitor
+  for (let i = 0; i <= 20; i++) {
+    const t = i / 20
+    R(Math.round(40 + t * 290), Math.round(540 - t * 204), 2, 2, P[0])
+    R(Math.round(920 - t * 290), Math.round(540 - t * 204), 2, 2, P[0])
   }
-  R(52, 306, 26, 26, P[13])
-  R(52, 306, 26, 4, P[3])
-  R(76, 312, 6, 10, P[13])
-  R(78, 314, 2, 6, P[1])
+  // dark falloff outside the light pools
+  dith(0, DESK_Y, 250, 208, P[0])
+  dith(0, 440, 320, 100, P[0])
 
-  // pen cup
-  R(160, 260, 24, 22, P[2])
-  R(160, 260, 24, 2, P[6])
-  R(164, 246, 3, 16, P[14])
-  R(170, 242, 3, 20, P[7])
-  R(176, 248, 3, 14, P[10])
+  // cold monitor glow widening toward the viewer
+  dith(330, DESK_Y + 2, 300, 28, P[2])
+  dith(298, DESK_Y + 30, 364, 36, P[2])
+  dith(262, DESK_Y + 66, 436, 48, P[2])
+  dith(390, DESK_Y + 2, 180, 32, P[6])
 
-  // phone resting shadow (phone itself is drawn per frame)
-  R(PHONE.x + 3, PHONE.y + PHONE.h - 3, PHONE.w, 6, P[0])
+  // warm lamp pool on the right, stepped falloff
+  dith(756, DESK_Y + 4, 204, 64, P[3])
+  dith(716, DESK_Y + 66, 244, 84, P[3])
+  dith(684, DESK_Y + 148, 276, 60, P[3])
+  dith(788, DESK_Y + 22, 148, 84, P[4])
 
-  // baked vignette: stepped dark bands at frame edges
-  dith(0, 0, 640, 14, P[0])
-  dith(0, 346, 640, 14, P[0])
-  dith(0, 0, 14, 360, P[0])
-  dith(626, 0, 14, 360, P[0])
-  R(0, 0, 640, 4, P[0])
-  R(0, 356, 640, 4, P[0])
-  R(0, 0, 4, 360, P[0])
-  R(636, 0, 4, 360, P[0])
+  // wall shelf with books, left, barely lit
+  R(30, 220, 168, 6, P[1])
+  R(30, 226, 6, 10, P[1])
+  R(190, 226, 6, 10, P[1])
+  const books = [
+    [40, 190, 12, 30, P[5]],
+    [54, 196, 10, 24, P[2]],
+    [66, 186, 14, 34, P[5]],
+    [82, 194, 10, 26, P[1]],
+    [94, 190, 12, 30, P[2]],
+    [112, 198, 26, 22, P[5]],
+  ]
+  for (const [x, y, w, h, c] of books) R(x, y, w, h, c)
 
+  // speaker, left of monitor, right edge rimmed by monitor glow
+  R(150, 272, 60, 64, P[0])
+  R(154, 276, 52, 56, P[1])
+  R(170, 284, 20, 2, P[2])
+  R(166, 286, 2, 12, P[2])
+  R(192, 286, 2, 12, P[2])
+  R(170, 298, 20, 2, P[2])
+  R(176, 314, 8, 8, P[2])
+  R(208, 274, 2, 60, P[2])
+
+  // monitor: bezel, screen hole, chin, neck, base, hard shadow
+  dith(400, 370, 160, 10, P[0])
+  R(226, 46, 508, 298, P[0])
+  R(238, 58, 484, 274, P[2])
+  R(240, 60, 480, 272, P[0])
+  R(MON.x, MON.y, MON.w, MON.h, P[0])
+  R(700, 336, 4, 4, P[10]) // power led
+  R(450, 344, 60, 12, P[0])
+  R(454, 344, 4, 12, P[2])
+  R(415, 356, 130, 12, P[0])
+  R(415, 356, 130, 2, P[2])
+
+  // desk lamp on the right: base, stem, head throwing light down-left
+  R(792, 346, 84, 10, P[0])
+  R(792, 346, 84, 2, P[2])
+  R(828, 262, 8, 86, P[0])
+  R(820, 250, 42, 12, P[0])
+  R(802, 252, 48, 6, P[0])
+  R(796, 258, 56, 8, P[0])
+  R(790, 266, 64, 8, P[5])
+  R(794, 272, 56, 4, P[12]) // glowing slit under the shade
+  dith(770, 276, 100, 26, P[4])
+  // light cone in the air, stepped and dithered
+  dith(786, 288, 84, 16, P[3])
+  dith(760, 304, 136, 16, P[3])
+  dith(732, 320, 196, 12, P[3])
   return cv
+}
+
+// NEAR: keyboard, mouse, mousepad, mug, papers, pen cup, cables. Brightest.
+function bakeNear(P) {
+  const { cv, R, dith } = layer()
+
+  // papers, dim on the left, warm-lit on the right
+  R(60, 460, 130, 44, P[2])
+  R(70, 468, 96, 1, P[1])
+  R(70, 476, 104, 1, P[1])
+  R(70, 484, 88, 1, P[1])
+  R(100, 494, 110, 36, P[2])
+  R(110, 502, 80, 1, P[1])
+  R(110, 510, 88, 1, P[1])
+  R(700, 414, 84, 26, P[4])
+  R(708, 420, 60, 1, P[3])
+  R(708, 426, 66, 1, P[3])
+  R(708, 432, 52, 1, P[3])
+
+  // pen cup, in the monitor glow
+  R(256, 382, 32, 36, P[2])
+  R(256, 382, 32, 2, P[6])
+  R(262, 366, 4, 20, P[14])
+  R(270, 362, 4, 24, P[7])
+  R(278, 368, 4, 18, P[10])
+
+  // mug with a coffee ring beside it
+  R(196, 428, 46, 46, P[13])
+  R(196, 428, 46, 4, P[3])
+  R(240, 438, 10, 18, P[13])
+  R(243, 442, 4, 10, P[1])
+  dith(196, 450, 46, 24, P[0])
+  ;(() => {
+    const cx = 272
+    const cy = 500
+    for (let a = 0; a < 16; a++) {
+      const x = Math.round(cx + Math.cos((a / 16) * Math.PI * 2) * 12)
+      const y = Math.round(cy + Math.sin((a / 16) * Math.PI * 2) * 6)
+      R(x, y, 2, 1, P[2])
+    }
+  })()
+
+  // sticky note near the keyboard
+  R(654, 408, 30, 22, P[11])
+  R(658, 414, 20, 1, P[5])
+  R(658, 419, 16, 1, P[5])
+
+  // cables
+  for (let i = 0; i < 8; i++) R(545 + i * 14, 368 + i * 8, 14, 3, P[0])
+  for (let i = 0; i < 5; i++) R(492, 372 + i * 11, 3, 7, P[0])
+  for (let i = 0; i < 5; i++) R(908 + i * 11, 478 + i * 5, 11, 3, P[0])
+
+  // keyboard filling the lower third, keys rimmed by monitor glow
+  R(300, 424, 380, 88, P[0])
+  R(306, 430, 368, 78, P[2])
+  dith(306, 430, 368, 6, P[6])
+  for (let ky = 0; ky < 4; ky++)
+    for (let kx = 0; kx < 18; kx++) {
+      const x = 312 + kx * 20
+      const y = 438 + ky * 16
+      R(x, y, 16, 12, P[5])
+      if (ky < 2 && kx > 2 && kx < 15) R(x, y, 16, 1, P[7])
+    }
+  R(400, 498, 180, 8, P[5])
+  R(400, 498, 180, 1, P[6])
+
+  // mousepad + mouse under the lamp
+  R(700, 446, 104, 64, P[5])
+  R(700, 446, 104, 2, P[3])
+  R(734, 462, 28, 40, P[2])
+  R(734, 462, 28, 6, P[6])
+  R(758, 468, 4, 28, P[3])
+  R(746, 464, 2, 10, P[0])
+
+  // phone resting shadow (the phone itself is drawn per frame)
+  R(PHONE.x + 3, PHONE.y + PHONE.h - 3, PHONE.w, 7, P[0])
+  return cv
+}
+
+// EDGE: desk lip across the very bottom + heavy corner vignette. Frames the shot.
+function bakeEdge(P) {
+  const { cv, R, dith } = layer()
+  R(0, LIP_Y, 960, 540 - LIP_Y, P[0])
+  R(0, LIP_Y, 960, 2, P[1])
+
+  dith(0, 0, 960, 18, P[0])
+  dith(0, 522, 960, 18, P[0])
+  dith(0, 0, 18, 540, P[0])
+  dith(942, 0, 18, 540, P[0])
+  // heavier corners
+  dith(0, 0, 70, 70, P[0])
+  dith(2, 2, 70, 70, P[0])
+  dith(890, 0, 70, 70, P[0])
+  dith(892, 2, 70, 70, P[0])
+  dith(0, 470, 70, 70, P[0])
+  dith(2, 472, 70, 70, P[0])
+  dith(890, 470, 70, 70, P[0])
+  dith(892, 472, 70, 70, P[0])
+  R(0, 0, 960, 5, P[0])
+  R(0, 535, 960, 5, P[0])
+  R(0, 0, 5, 540, P[0])
+  R(955, 0, 5, 540, P[0])
+  return cv
+}
+
+export function bakeLayers(P) {
+  return [bakeFar(P), bakeMid(P), bakeNear(P), bakeEdge(P)]
 }
 
 export function drawPhoneClosed(g, P, dx = 0, dy = 0) {
@@ -183,48 +275,40 @@ export function drawPhoneClosed(g, P, dx = 0, dy = 0) {
   const py = y + dy
   g.fillStyle = P[0]
   g.fillRect(px, py, w, h)
-  g.fillStyle = P[2]
+  g.fillStyle = P[3] // warm rim from the lamp
   g.fillRect(px, py, w, 2)
+  g.fillStyle = P[2]
   g.fillRect(px, py, 2, h)
   g.fillStyle = P[5]
-  g.fillRect(px + 6, py + 6, 12, 12) // camera bump
+  g.fillRect(px + 8, py + 8, 16, 16) // camera bump
   g.fillStyle = P[0]
-  g.fillRect(px + 9, py + 9, 6, 6)
+  g.fillRect(px + 12, py + 12, 8, 8)
   g.fillStyle = P[2]
-  for (let i = 0; i < 3; i++) g.fillRect(px + 30 + i * 12, py + h - 8, 6, 2)
+  for (let i = 0; i < 3; i++) g.fillRect(px + 38 + i * 14, py + h - 10, 8, 2)
 }
 
 // t: 0..1 through the pickup. Reverse t for the put-down.
+// The phone rises and rotates flat-on by itself - no hand.
 export function drawPickup(g, P, t) {
   const f = Math.min(5, Math.floor(t * 6)) // 6 stepped frames
-  // hand slides in from lower right
-  const hx = [620, 560, 540, 552, 560, 580][f]
-  const hy = [352, 330, 316, 260, 190, 150][f]
-  if (f <= 1) drawPhoneClosed(g, P, f === 1 ? -1 : 0, f === 1 ? -2 : 0)
-  if (f >= 2) {
-    // phone lifting, rotating to portrait, growing toward the panel rect
-    const fw = [0, 0, 60, 40, 60, 120][f]
-    const fh = [0, 0, 34, 64, 110, 220][f]
-    const fx = [0, 0, 522, 540, 528, 498][f]
-    const fy = [0, 0, 280, 236, 160, 70][f]
-    g.fillStyle = P[0]
-    g.fillRect(fx, fy, fw, fh)
-    g.fillStyle = P[2]
-    g.fillRect(fx, fy, fw, 2)
-    g.fillRect(fx, fy, 2, fh)
-    if (f >= 3) {
-      // face flipping toward us: dark screen with a glint
-      g.fillStyle = P[1]
-      g.fillRect(fx + 4, fy + 6, fw - 8, fh - 12)
-      g.fillStyle = P[7]
-      g.fillRect(fx + 6, fy + 8, 2, Math.max(2, fh - 16))
-    }
-  }
-  // blocky hand
-  g.fillStyle = P[4]
-  g.fillRect(hx, hy, 26, 36)
-  g.fillRect(hx - 6, hy + 8, 8, 20)
+  const fx = [820, 816, 806, 780, 750, 724][f]
+  const fy = [450, 436, 392, 300, 170, 58][f]
+  const fw = [88, 88, 72, 120, 170, 208][f]
+  const fh = [56, 60, 96, 200, 320, 432][f]
+  g.fillStyle = P[0]
+  g.fillRect(fx, fy, fw, fh)
   g.fillStyle = P[3]
-  g.fillRect(hx, hy, 26, 4)
-  for (let i = 0; i < 3; i++) g.fillRect(hx + 2 + i * 8, hy - 4, 6, 6)
+  g.fillRect(fx, fy, fw, 2)
+  g.fillStyle = P[2]
+  g.fillRect(fx, fy, 2, fh)
+  if (f >= 3) {
+    // face flipped toward us: dark screen with a glint
+    g.fillStyle = P[1]
+    g.fillRect(fx + 6, fy + 8, fw - 12, fh - 16)
+    g.fillStyle = P[7]
+    g.fillRect(fx + 9, fy + 12, 3, Math.max(3, fh - 24))
+  } else {
+    g.fillStyle = P[5]
+    g.fillRect(fx + 8, fy + 8, Math.max(8, Math.round(fw * 0.18)), Math.max(8, Math.round(fh * 0.2)))
+  }
 }
