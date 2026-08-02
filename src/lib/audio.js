@@ -79,6 +79,15 @@ export const sfx = {
     tone(988, 0.05, 'triangle', 0.05)
     tone(1319, 0.09, 'triangle', 0.045, 0.06)
   },
+  klaxon: () => {
+    for (let i = 0; i < 5; i++) {
+      const t = i * 0.62
+      tone(784, 0.28, 'sawtooth', 0.08, t)
+      tone(523, 0.3, 'sawtooth', 0.08, t + 0.3)
+    }
+    tone(47, 3.2, 'sawtooth', 0.04)
+    tone(35, 3.2, 'square', 0.03, 0.04)
+  },
   day: () => {
     tone(392, 0.06, 'triangle', 0.045)
     tone(523, 0.06, 'triangle', 0.045, 0.06)

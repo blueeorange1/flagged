@@ -11,8 +11,6 @@ function sessionId() {
   return id
 }
 
-// TODO(backend): send to Supabase here. This is the only function that
-// touches storage, so wiring the backend is a one-file change.
 export function logEvent({
   incident_type,
   tactic,

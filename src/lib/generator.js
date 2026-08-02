@@ -734,6 +734,20 @@ export function solvable(c, day) {
   return fired.length >= 1
 }
 
+// the directory card shows what Meridian has on file, not what this session did
+function attachDirectory(c) {
+  const s = c.sender
+  if (!s.knownContact) {
+    s.homeCity = null
+    s.homeDevice = null
+    return c
+  }
+  const e = c.evidence
+  s.homeCity = e.lastKnownCity
+  s.homeDevice = e.knownDevices.includes(e.deviceHash) ? e.deviceHash : e.knownDevices[0]
+  return c
+}
+
 export function generateDay(day, seed, tally = {}) {
   const plan = DAY_PLAN[day]
   const cases = []
@@ -767,7 +781,7 @@ export function generateDay(day, seed, tally = {}) {
     bump(c.tactic)
     cases.push(c)
   }
-  return cases
+  return cases.map(attachDirectory)
 }
 
 export function generateGame(seed = Math.floor(Math.random() * 1e9)) {

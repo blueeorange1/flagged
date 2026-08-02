@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Win, { DESK } from './components/Win.jsx'
 import { Inbox, Ledger, Sentry } from './components/Panes.jsx'
-import Phone, { unreadOf } from './components/Phone.jsx'
+import Phone, { unreadOf, questionsFor } from './components/Phone.jsx'
 import Scene from './components/Scene.jsx'
-import { Brief, Result, DayEnd, GameOver, RuleBook, Settings } from './components/Overlays.jsx'
+import { Brief, Result, DayEnd, EndOfRun, RuleBook, Settings } from './components/Overlays.jsx'
 import INTERRUPT from './data/interrupt.json' with { type: 'json' }
 import { STAGE } from './lib/scene.js'
 import { generateGame } from './lib/generator.js'
-import { firedRules } from './lib/rules.js'
+import { firedRules, lossFor } from './lib/rules.js'
 import { aiReply, hasKey } from './lib/ai.js'
 import { opening } from './lib/dialogue.js'
 import { logEvent } from './lib/telemetry.js'
@@ -15,13 +15,19 @@ import { sfx, setMuted } from './lib/audio.js'
 
 const START_BALANCE = 340000
 const START_PERSONAL = 12400
-const BREACH_COST = 18000
 const CODE_LOSS = 9800
 const TIMER_SECONDS = 90
 const LIFT_MS = 1200
 const DROP_MS = 600
 const BUZZ_AT = [0, 8000, 20000, 40000]
 const INTR_CHANCE = 0.25
+const ALARM_MS = 3600
+
+const ALARM_BARS = [
+  { text: 'ACCOUNT COMPROMISED', bg: 'var(--color-c12)', fg: 'var(--color-c00)' },
+  { text: 'UNAUTHORIZED ACCESS', bg: 'var(--color-c09)', fg: 'var(--color-c13)' },
+  { text: 'PERSONAL FUNDS AT RISK', bg: 'var(--color-c00)', fg: 'var(--color-c12)' },
+]
 
 const DEFAULT_WINS = {
   inbox: { x: 2, y: 14, w: 234, h: 112, max: false },
@@ -40,6 +46,9 @@ const SYS_SENDER = {
   avatarSeed: INTERRUPT.system.name,
   role: INTERRUPT.system.role,
   knownContact: true,
+  accountAge: INTERRUPT.system.age,
+  homeCity: null,
+  homeDevice: null,
 }
 
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
@@ -183,7 +192,6 @@ export default function App() {
   const [right, setRight] = useState(0)
   const [total, setTotal] = useState(0)
   const [dayStats, setDayStats] = useState({ right: 0, total: 0, obeyed: 0 })
-  const [obeyedAll, setObeyedAll] = useState(0)
 
   const [chat, setChat] = useState([])
   const [busy, setBusy] = useState(false)
@@ -201,6 +209,9 @@ export default function App() {
 
   const [hintStep, setHintStep] = useState(0)
   const [flash, setFlash] = useState(null)
+  const [alarm, setAlarm] = useState(0)
+  const [runLog, setRunLog] = useState([])
+  const [bankrupt, setBankrupt] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
   const [tutSkip, setTutSkip] = useState(false)
   const [inboxHinted, setInboxHinted] = useState(false)
@@ -366,10 +377,10 @@ export default function App() {
 
   const timerOn = timeLeft !== null
   useEffect(() => {
-    if (!timerOn || phase !== 'play' || showRules || showSettings) return
+    if (!timerOn || phase !== 'play' || showRules || showSettings || alarm) return
     const iv = setInterval(() => setTimeLeft((t) => (t > 0 ? t - 1 : t)), 1000)
     return () => clearInterval(iv)
-  }, [timerOn, phase, showRules, showSettings])
+  }, [timerOn, phase, showRules, showSettings, alarm])
 
   useEffect(() => {
     if (timeLeft === 15) sfx.alert()
@@ -399,7 +410,15 @@ export default function App() {
     const digits = String(100000 + Math.floor(Math.random() * 900000))
     const shown = digits.slice(0, 3) + '-' + digits.slice(3)
     const a = pick(INTERRUPT.askers)
-    const sender = { name: a.name, avatarSeed: a.name, role: a.role, knownContact: a.known }
+    const sender = {
+      name: a.name,
+      avatarSeed: a.name,
+      role: a.role,
+      knownContact: a.known,
+      accountAge: a.age,
+      homeCity: a.city,
+      homeDevice: a.device,
+    }
     const key = thKey(sender)
     const at = (ms, fn) => intrTimers.current.push(setTimeout(fn, ms))
     const t0 = 3000 + Math.random() * 12000
@@ -442,8 +461,16 @@ export default function App() {
     setIntr((x) => x && { ...x, stage: 'closed', responded: true, gave, checkedSentry: opened.current.has('sentry') })
     if (gave) {
       setPersonal((p) => Math.max(0, p - CODE_LOSS))
-      sfx.wrong()
-      setFlash('You just read your sign-in code to a stranger. ' + money(CODE_LOSS) + ' left your account.')
+      sfx.klaxon()
+      setAlarm(1)
+      setTimeout(() => setAlarm(2), 220)
+      setTimeout(() => setAlarm(3), 440)
+      setTimeout(() => {
+        setAlarm(0)
+        setFlash(
+          'You just read your sign-in code to a stranger. ' + money(CODE_LOSS) + ' left your account.'
+        )
+      }, ALARM_MS)
     } else {
       sfx.hold()
     }
@@ -577,22 +604,27 @@ export default function App() {
     let dataLost = false
     let complaint = false
 
+    let nextBalance = balance
+    let nextPersonal = personal
     if (!correct && decision === 'approve') {
-      if (c.content.kind === 'access') {
-        loss = BREACH_COST
-        dataLost = true
+      loss = lossFor(c, day)
+      dataLost = c.content.kind === 'access'
+      if (c.target === 'personal') {
+        nextPersonal = Math.max(0, personal - loss)
+        setPersonal(nextPersonal)
       } else {
-        loss = c.content.amount
+        nextBalance = Math.max(0, balance - loss)
+        setBalance(nextBalance)
       }
-      if (c.target === 'personal') setPersonal((p) => Math.max(0, p - loss))
-      else setBalance((b) => Math.max(0, b - loss))
     }
+    if (nextBalance <= 0 || nextPersonal <= 0)
+      setBankrupt({ day, who: nextBalance <= 0 ? 'company' : 'personal' })
     if (!correct && decision === 'hold') complaint = true
 
     const iv = intrRef.current
     const codeAsk = !!iv && iv.stage !== 'sent'
 
-    logEvent({
+    const ev = logEvent({
       incident_type: c.isTwist ? 'twist_authority' : c.surface,
       tactic: c.tactic,
       truth_type: c.truth,
@@ -611,6 +643,7 @@ export default function App() {
         : null,
       day,
     })
+    setRunLog((l) => [...l, ev])
 
     setTotal((t) => t + 1)
     if (correct) setRight((r) => r + 1)
@@ -619,7 +652,6 @@ export default function App() {
       total: s.total + 1,
       obeyed: s.obeyed + (obeyed && !correct ? 1 : 0),
     }))
-    if (obeyed && !correct) setObeyedAll((o) => o + 1)
 
     setHistory((h) => [
       ...h,
@@ -651,6 +683,10 @@ export default function App() {
 
   function next() {
     sfx.click()
+    if (bankrupt) {
+      setPhase('over')
+      return
+    }
     if (idx + 1 < game.days[day].length) {
       setIdx(idx + 1)
       setPhase('play')
@@ -683,13 +719,15 @@ export default function App() {
     setRight(0)
     setTotal(0)
     setDayStats({ right: 0, total: 0, obeyed: 0 })
-    setObeyedAll(0)
     setHistory([])
     setArchive([])
     setThreads({})
     setPhoneState('closed')
     setPhoneView({ mode: 'list' })
     setIntr(null)
+    setAlarm(0)
+    setRunLog([])
+    setBankrupt(null)
     intrDay.current = 0
     setCamDir(null)
     setTutSkip(false)
@@ -839,7 +877,12 @@ export default function App() {
   return (
     <div id="screen">
       <div id="stage" style={{ '--stage-scale': scale }}>
-        <div id="camera" className={camDir === 'in' ? 'cam-in' : camDir === 'out' ? 'cam-out' : ''}>
+        <div
+          id="camera"
+          className={
+            alarm ? 'alarm-shake' : camDir === 'in' ? 'cam-in' : camDir === 'out' ? 'cam-out' : ''
+          }
+        >
           <Scene
             phoneState={phoneState}
             phoneT={phoneT}
@@ -1062,6 +1105,7 @@ export default function App() {
               busy={busy}
               onSend={send}
               suggest={suggest}
+              questions={cur ? questionsFor(cur.id) : []}
               hlFirst={hlFirst}
               onClose={closePhone}
               dim={phoneDim}
@@ -1069,6 +1113,26 @@ export default function App() {
             />
           )}
         </div>
+
+        {alarm > 0 && (
+          <div id="alarm" style={{ pointerEvents: 'auto' }}>
+            <div className="alarm-flood" />
+            {ALARM_BARS.slice(0, alarm).map((b) => (
+              <div
+                key={b.text}
+                className="alarm-bar t14"
+                style={{ background: b.bg, color: b.fg }}
+              >
+                {b.text}
+              </div>
+            ))}
+            {alarm >= 3 && (
+              <div className="alarm-sub t14" style={{ color: 'var(--color-c09)', marginTop: 4 }}>
+                {money(CODE_LOSS)} GONE
+              </div>
+            )}
+          </div>
+        )}
 
         {spotCfg && (spotCfg.spots || spotCfg.arrow) && (
           <SpotOverlay
@@ -1092,11 +1156,12 @@ export default function App() {
           />
         )}
         {phase === 'over' && (
-          <GameOver
+          <EndOfRun
+            bankrupt={bankrupt}
             balance={balance}
             personal={personal}
             accuracy={accuracy}
-            obeyed={obeyedAll}
+            log={runLog}
             onRestart={restart}
           />
         )}

@@ -11,7 +11,25 @@ export const SUGGESTED = [
   'What city are you in right now?',
   'What device are you messaging from?',
   'Can I call you back on the number in our vendor file?',
+  'Who are you and what is your role here?',
+  'Why does this have to happen tonight?',
+  'Read me back the account details on this request.',
+  'Can this wait until my manager is in tomorrow?',
+  'What happens if I hold this?',
 ]
+
+const ROTATE = SUGGESTED.slice(1)
+
+// the city question always leads; the rest rotate so the buttons never cover
+// every angle and typing your own stays worth doing
+export function questionsFor(caseId) {
+  let h = 0
+  for (let i = 0; i < caseId.length; i++) h = (h * 31 + caseId.charCodeAt(i)) >>> 0
+  const start = h % ROTATE.length
+  const rest = []
+  for (let i = 0; i < 4; i++) rest.push(ROTATE[(start + i) % ROTATE.length])
+  return [SUGGESTED[0], ...rest]
+}
 
 export const unreadOf = (th) =>
   th.msgs.reduce((n, m) => n + (m.from === 'them' && !m.read ? 1 : 0), 0)
@@ -74,11 +92,62 @@ function ListRow({ th, active, onOpen }) {
   )
 }
 
-function Thread({ th, isActive, code, busy, onSend, suggest, hlFirst, onBack }) {
+function Field({ k, v, warn }) {
+  return (
+    <div style={{ display: 'flex', gap: 3 }}>
+      <span style={{ color: 'var(--color-c06)', width: 62, flex: '0 0 auto' }}>{k}</span>
+      <span style={{ color: warn ? 'var(--color-c14)' : 'var(--color-c08)', flex: 1 }}>{v}</span>
+    </div>
+  )
+}
+
+function ContactCard({ s }) {
+  const days = s.accountAge
+  return (
+    <div
+      data-spot="contact-card"
+      style={{
+        flex: '0 0 auto',
+        padding: 3,
+        background: 'var(--color-c01)',
+        borderBottom: '1px solid var(--color-c02)',
+      }}
+    >
+      <div style={{ color: 'var(--color-c11)', marginBottom: 2 }}>DIRECTORY CARD</div>
+      <Field k="NAME" v={s.name} />
+      <Field k="ROLE" v={s.role} />
+      <Field
+        k="STATUS"
+        v={s.knownContact ? 'IN CONTACTS' : 'NOT IN CONTACTS'}
+        warn={!s.knownContact}
+      />
+      <Field k="ACCOUNT" v={days + (days === 1 ? ' day old' : ' days old')} warn={days < 14} />
+      {s.knownContact ? (
+        <>
+          <Field k="USUAL CITY" v={s.homeCity || 'not recorded'} />
+          <Field k="USUAL KIT" v={s.homeDevice || 'not recorded'} />
+          {s.homeCity && (
+            <div style={{ color: 'var(--color-c06)', marginTop: 2 }}>
+              Compare this against what SENTRY logged for tonight.
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ color: 'var(--color-c14)', marginTop: 2 }}>
+          Nothing else on file. Meridian has no city and no device for this account. An empty card
+          is the signal.
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Thread({ th, isActive, code, busy, onSend, suggest, questions, hlFirst, onBack }) {
   const [text, setText] = useState('')
+  const [card, setCard] = useState(false)
   const endRef = useRef(null)
   const lastThem = th.msgs.map((m) => m.from).lastIndexOf('them')
-  const unasked = SUGGESTED.filter((q) => !th.msgs.some((m) => m.from === 'me' && m.text === q))
+  const unasked = questions.filter((q) => !th.msgs.some((m) => m.from === 'me' && m.text === q))
 
   useEffect(() => {
     const box = endRef.current && endRef.current.closest('.phone-body')
@@ -108,14 +177,25 @@ function Thread({ th, isActive, code, busy, onSend, suggest, hlFirst, onBack }) 
         <button className="btn" data-spot="phone-back" onClick={onBack}>
           {'<'}
         </button>
-        <Avatar seed={th.sender.avatarSeed} size={14} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: 'var(--color-c09)' }}>{th.sender.name}</div>
-          <div style={{ color: th.sender.knownContact ? 'var(--color-c06)' : 'var(--color-c14)' }}>
-            {th.sender.role} - {th.sender.knownContact ? 'IN CONTACTS' : 'UNKNOWN'}
+        <div
+          data-spot="profile"
+          onClick={() => setCard((v) => !v)}
+          style={{ display: 'flex', gap: 2, alignItems: 'center', flex: 1, minWidth: 0, cursor: 'pointer' }}
+        >
+          <Avatar seed={th.sender.avatarSeed} size={14} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ color: 'var(--color-c09)' }}>{th.sender.name}</div>
+            <div style={{ color: th.sender.knownContact ? 'var(--color-c06)' : 'var(--color-c14)' }}>
+              {th.sender.role} - {th.sender.knownContact ? 'IN CONTACTS' : 'UNKNOWN'}
+            </div>
           </div>
+          <span style={{ color: 'var(--color-c11)', flex: '0 0 auto' }}>
+            {card ? 'HIDE' : 'CARD'}
+          </span>
         </div>
       </div>
+
+      {card && <ContactCard s={th.sender} />}
 
       <div className="phone-body" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 2 }}>
         {th.msgs.map((m, i) => (
@@ -195,7 +275,7 @@ function Thread({ th, isActive, code, busy, onSend, suggest, hlFirst, onBack }) 
   )
 }
 
-export default function Phone({ threads, view, setView, activeName, codeName, code, busy, onSend, suggest, hlFirst, onClose, dim, aiOn }) {
+export default function Phone({ threads, view, setView, activeName, codeName, code, busy, onSend, suggest, questions, hlFirst, onClose, dim, aiOn }) {
   const th = view.mode === 'thread' ? threads[view.name] : null
   return (
     <div
@@ -241,6 +321,7 @@ export default function Phone({ threads, view, setView, activeName, codeName, co
           busy={busy}
           onSend={(t) => onSend(t, view.name)}
           suggest={suggest}
+          questions={questions}
           hlFirst={hlFirst}
           onBack={() => setView({ mode: 'list' })}
         />

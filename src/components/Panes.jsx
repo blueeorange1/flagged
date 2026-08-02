@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Avatar from './Avatar.jsx'
 import { travelMinutes } from '../lib/rules.js'
 
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
@@ -39,6 +40,35 @@ function More({ on, set, label }) {
   )
 }
 
+// Evidence the player can read off the request itself. Purely presentational:
+// nothing here is recorded, so an impersonator lies the same either way.
+function ProfileChip({ s }) {
+  if (!s.knownContact || s.role === 'Vendor' || s.role === 'Unknown') return null
+  return (
+    <div
+      data-spot="profile-chip"
+      style={{
+        display: 'flex',
+        gap: 3,
+        alignItems: 'center',
+        padding: 2,
+        marginBottom: 2,
+        background: 'var(--color-c01)',
+        borderLeft: '2px solid var(--accent)',
+      }}
+    >
+      <Avatar seed={s.avatarSeed} size={14} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ color: 'var(--color-c09)' }}>{s.name}</div>
+        <div style={{ color: 'var(--color-c06)' }}>{s.role}</div>
+      </div>
+      <div style={{ color: s.accountAge < 30 ? 'var(--color-c12)' : 'var(--color-c07)' }}>
+        {s.accountAge}d
+      </div>
+    </div>
+  )
+}
+
 export function Inbox({ c, archive }) {
   const [open, setOpen] = useState(false)
   const mail = c.surface === 'inbox' ? c : null
@@ -50,6 +80,7 @@ export function Inbox({ c, archive }) {
           onClick={() => setOpen(!open)}
           style={{ cursor: 'pointer', borderLeft: '2px solid var(--accent)', paddingLeft: 2 }}
         >
+          <ProfileChip s={mail.sender} />
           <div style={{ color: 'var(--color-c09)' }}>{mail.sender.name}</div>
           <div style={{ color: 'var(--color-c08)', marginBottom: 2 }}>
             {open ? '- ' : '+ '}
@@ -101,6 +132,7 @@ export function Ledger({ c, balance, personal, history, day, live }) {
       <Head>PENDING</Head>
       {pending ? (
         <div className={live ? 'pulse-outline' : ''} style={{ padding: 2 }}>
+          <ProfileChip s={c.sender} />
           <div className="t14" style={{ color: 'var(--color-c12)' }}>
             {money(c.content.amount)}
           </div>

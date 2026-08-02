@@ -149,28 +149,171 @@ export function DayEnd({ day, stats, balance, personal, accuracy, onNext }) {
   )
 }
 
-export function GameOver({ balance, personal, accuracy, obeyed, onRestart }) {
-  const grade =
-    accuracy >= 90 && balance >= 320000
-      ? 'YOU HELD THE LINE'
-      : accuracy >= 70
-        ? 'YOU MOSTLY HELD'
-        : 'THEY GOT THROUGH'
+const TACTIC_LABEL = {
+  authority_pressure: 'RANK PULLING',
+  manufactured_urgency: 'THE FAKE CLOCK',
+  secrecy_isolation: 'KEEP IT QUIET',
+  irreversible_payment: 'NO TAKE-BACKS',
+  trusted_contact_impersonation: 'WEARING A FRIEND',
+  too_good_to_be_true: 'FREE MONEY',
+  credential_harvesting: 'HAND OVER THE KEYS',
+}
+
+const secs = (ms) => Math.round(ms / 1000)
+
+// every line below is read off this run's own decisions, never a canned tip
+function patternLine(evs) {
+  const missed = evs.filter((e) => !e.correct)
+  const approved = missed.filter((e) => e.decision === 'approve')
+  const held = missed.filter((e) => e.decision === 'hold')
+
+  if (approved.length && approved.every((e) => e.obeyed_authority))
+    return 'Every one you got wrong, you approved because someone senior told you to. Rank is the cheapest thing in the world to fake.'
+
+  const blind = approved.filter((e) => e.evidence_windows_opened <= 1)
+  if (approved.length && blind.length >= Math.ceil(approved.length * 0.6))
+    return (
+      'You approved ' +
+      blind.length +
+      ' of these without opening the evidence. You took their word for it, and their word was the whole attack.'
+    )
+
+  if (approved.length >= 2 && approved.every((e) => !e.questioned_sender))
+    return 'You never asked one of them a single question before saying yes. They were counting on exactly that.'
+
+  const fast = approved.filter((e) => e.ms_to_decide < 25000)
+  if (approved.length && fast.length >= Math.ceil(approved.length * 0.6)) {
+    const avg = secs(fast.reduce((n, e) => n + e.ms_to_decide, 0) / fast.length)
+    return (
+      'You spent about ' +
+      avg +
+      ' seconds on the ones you got wrong. You moved at their speed instead of your own.'
+    )
+  }
+
+  if (held.length > approved.length)
+    return (
+      'You blocked ' +
+      held.length +
+      ' real request' +
+      (held.length > 1 ? 's' : '') +
+      ' here. Being suspicious is not the same as checking - the log would have cleared them.'
+    )
+
+  if (approved.length === 1 && missed.length === 1) {
+    const e = approved[0]
+    return (
+      'One got past you, on night ' +
+      e.day +
+      ', after ' +
+      secs(e.ms_to_decide) +
+      ' seconds and ' +
+      e.evidence_windows_opened +
+      ' window' +
+      (e.evidence_windows_opened === 1 ? '' : 's') +
+      ' of evidence.'
+    )
+  }
+
   return (
-    <Modal title="SIX NIGHTS LATER">
-      <div className="t14" style={{ color: 'var(--color-c12)', marginBottom: 4 }}>
-        {grade}
-      </div>
+    'You lost ' +
+    missed.length +
+    ' of ' +
+    evs.length +
+    ' against this one, and it caught you a different way each time.'
+  )
+}
+
+export function EndOfRun({ bankrupt, balance, personal, accuracy, log, onRestart }) {
+  const attacks = log.filter((e) => TACTIC_LABEL[e.tactic])
+  const groups = {}
+  for (const e of attacks) (groups[e.tactic] = groups[e.tactic] || []).push(e)
+  const rows = Object.entries(groups)
+    .map(([t, evs]) => ({
+      tactic: t,
+      evs,
+      seen: evs.length,
+      right: evs.filter((e) => e.correct).length,
+    }))
+    .sort((a, b) => a.right / a.seen - b.right / b.seen || b.seen - a.seen)
+
+  const worst = rows.find((r) => r.right < r.seen)
+  const gaveCode = log.some((e) => e.gave_away_code === true)
+
+  return (
+    <Modal
+      title={bankrupt ? (bankrupt.who === 'company' ? 'THE LIGHTS WENT OUT' : 'CLEANED OUT') : 'SIX NIGHTS LATER'}
+      w={360}
+    >
+      {bankrupt ? (
+        <div style={{ color: 'var(--color-c14)', marginBottom: 3 }}>
+          {bankrupt.who === 'company'
+            ? `Meridian ran out of money on Day ${bankrupt.day}. There was no Day ${bankrupt.day + 1}.`
+            : `Your own account hit zero on Day ${bankrupt.day}. You went home. There was no Day ${bankrupt.day + 1}.`}
+        </div>
+      ) : (
+        <div style={{ color: 'var(--color-c08)', marginBottom: 3 }}>
+          You worked all six nights and the company is still standing.
+        </div>
+      )}
       <div style={{ color: 'var(--color-c07)' }}>Company balance: {money(balance)}</div>
       <div style={{ color: 'var(--color-c07)' }}>Your account: {money(personal)}</div>
       <div style={{ color: 'var(--color-c07)' }}>Accuracy: {accuracy}%</div>
-      <div style={{ color: obeyed ? 'var(--color-c14)' : 'var(--color-c10)', marginTop: 3 }}>
-        {obeyed
-          ? 'You obeyed authority without verifying ' + obeyed + ' time(s). That is the one they count on.'
-          : 'You never took an order at face value. That is the whole job.'}
+
+      {gaveCode && (
+        <div style={{ marginTop: 4, background: 'var(--color-c13)', color: 'var(--color-c09)', padding: 2 }}>
+          You read a sign-in code out to a stranger. Nothing else on this screen cost you as much.
+          A code is the last lock on your own account, and no real company, bank or helpdesk will
+          ever ask you to say one out loud.
+        </div>
+      )}
+
+      <div style={{ color: 'var(--color-c11)', marginTop: 4 }}>WHAT THEY TRIED ON YOU</div>
+      {rows.length === 0 && (
+        <div style={{ color: 'var(--color-c06)' }}>No attacks reached a verdict this run.</div>
+      )}
+      {rows.map((r) => (
+        <div key={r.tactic} style={{ display: 'flex', gap: 3, marginBottom: 1 }}>
+          <span style={{ flex: 1, minWidth: 0, color: 'var(--color-c08)' }}>
+            {TACTIC_LABEL[r.tactic]}
+          </span>
+          <span style={{ color: 'var(--color-c06)' }}>seen {r.seen}</span>
+          <span
+            style={{
+              width: 46,
+              textAlign: 'right',
+              color: r.right === r.seen ? 'var(--color-c10)' : 'var(--color-c14)',
+            }}
+          >
+            {r.right}/{r.seen} right
+          </span>
+        </div>
+      ))}
+
+      {worst ? (
+        <div style={{ marginTop: 4, borderTop: '1px solid var(--color-c02)', paddingTop: 3 }}>
+          <div style={{ color: 'var(--color-c12)' }}>
+            WORST AGAINST: {TACTIC_LABEL[worst.tactic]}
+          </div>
+          <div style={{ color: 'var(--color-c08)', marginTop: 2 }}>{patternLine(worst.evs)}</div>
+        </div>
+      ) : (
+        rows.length > 0 && (
+          <div style={{ color: 'var(--color-c10)', marginTop: 4 }}>
+            You beat all seven. Not one of them got a verdict out of you it did not deserve.
+          </div>
+        )
+      )}
+
+      <div style={{ color: 'var(--color-c11)', marginTop: 4 }}>
+        These seven are not made up for the game. They are the whole toolkit: pull rank, start a
+        clock, swear you to secrecy, wear a face you trust, take money that cannot come back,
+        promise something free, ask for your login. Every scam that will ever reach your phone is
+        some mix of those. You have now seen all seven with the answers in front of you.
       </div>
+
       <button className="btn btn-ok" style={{ marginTop: 4 }} onClick={onRestart}>
-        NEW SHIFT
+        PLAY AGAIN
       </button>
     </Modal>
   )

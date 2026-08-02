@@ -16,6 +16,31 @@ export function travelMinutes(fromCity, toCity) {
 
 export const IRREVERSIBLE = ['wire', 'crypto', 'voucher']
 
+const TACTIC_SEVERITY = {
+  irreversible_payment: 2.1,
+  authority_pressure: 1.9,
+  credential_harvesting: 1.85,
+  trusted_contact_impersonation: 1.85,
+  secrecy_isolation: 1.65,
+  manufactured_urgency: 1.55,
+  too_good_to_be_true: 1.35,
+  none: 1.45,
+}
+
+const ACCESS_BASE = 18000
+const PERSONAL_CAP = 5200
+const COMPANY_CAP = 120000
+
+export function lossFor(c, day) {
+  const sev = TACTIC_SEVERITY[c.tactic] ?? 1.8
+  const irr = IRREVERSIBLE.includes(c.content.method) ? 1.25 : 1
+  const base = c.content.kind === 'access' ? ACCESS_BASE : c.content.amount
+  // day 1 pays face value, day 6 pays 1.7x: late attacks drain larger accounts
+  const scaled = base * sev * irr * (1 + (day - 1) * 0.14)
+  const cap = c.target === 'personal' ? PERSONAL_CAP : COMPANY_CAP
+  return Math.min(Math.round(scaled / 100) * 100, cap)
+}
+
 export const RULES = [
   {
     id: 'impossible_travel',

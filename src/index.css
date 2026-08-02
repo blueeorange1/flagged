@@ -440,3 +440,93 @@ input::selection {
     background: var(--color-c01);
   }
 }
+
+.alarm-shake {
+  animation: alarmshake 120ms steps(1) infinite;
+}
+
+@keyframes alarmshake {
+  0% {
+    transform: scale(1.15) translate(-15px, -1px);
+  }
+  25% {
+    transform: scale(1.15) translate(-1px, -13px);
+  }
+  50% {
+    transform: scale(1.15) translate(-13px, 1px);
+  }
+  75% {
+    transform: scale(1.15) translate(-3px, -11px);
+  }
+  100% {
+    transform: scale(1.15) translate(-15px, -1px);
+  }
+}
+
+#alarm {
+  position: absolute;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.alarm-flood {
+  position: absolute;
+  inset: 0;
+  animation: alarmflood 160ms steps(1) infinite;
+}
+
+@keyframes alarmflood {
+  0% {
+    background: var(--color-c14);
+    opacity: 0.78;
+  }
+  50% {
+    background: var(--color-c13);
+    opacity: 0.55;
+  }
+  100% {
+    background: var(--color-c14);
+    opacity: 0.78;
+  }
+}
+
+.alarm-bar {
+  position: relative;
+  padding: 3px 10px;
+  border: 2px solid var(--color-c00);
+  animation: alarmslam 100ms steps(3) both;
+}
+
+@keyframes alarmslam {
+  0% {
+    transform: scale(3);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.alarm-sub {
+  position: relative;
+  animation: alarmblink 200ms steps(1) infinite;
+}
+
+@keyframes alarmblink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}

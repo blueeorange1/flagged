@@ -7,7 +7,8 @@
       "{code} is your Meridian login code. It expires in 5 minutes. Never read this code out to anyone, including IT.",
       "Security code: {code}. If you did not request this, ignore it. We will never ask you to send it back.",
       "Your one time code is {code}. Anyone asking you for it is not from Meridian."
-    ]
+    ],
+    "age": 2140
   },
   "askers": [
     {
@@ -15,42 +16,60 @@
       "role": "Helpdesk Tier 2",
       "known": false,
       "ask": "Helpdesk here. Your session is throwing token errors on our board. I am rebinding it now. Read me the 6 digit code that just landed so it takes.",
-      "escalate": "Still waiting on that code. If the rebind fails your login drops at the next sync and nobody can reset you until morning."
+      "escalate": "Still waiting on that code. If the rebind fails your login drops at the next sync and nobody can reset you until morning.",
+      "age": 4,
+      "city": null,
+      "device": null
     },
     {
       "name": "Imogen Sayre",
       "role": "Compliance Analyst",
       "known": true,
       "ask": "Running the overnight access audit. Your account is the last one unconfirmed. I just need the code on your phone to sign the identity check off.",
-      "escalate": "The audit file locks at 02:00. If I submit it with your line blank it goes up as a failed control with your name on it. Send the code."
+      "escalate": "The audit file locks at 02:00. If I submit it with your line blank it goes up as a failed control with your name on it. Send the code.",
+      "age": 612,
+      "city": "Northgate",
+      "device": "WKS-2038"
     },
     {
       "name": "Caspar Wende",
       "role": "Identity Engineer",
       "known": true,
       "ask": "We are mid SSO migration and your profile is stuck between the old and new directory. The migration tool needs the code from that text to finish the move.",
-      "escalate": "I have the batch open and I cannot hold it much longer. If you drop out of this window you get rebuilt from scratch and lose your saved cases."
+      "escalate": "I have the batch open and I cannot hold it much longer. If you drop out of this window you get rebuilt from scratch and lose your saved cases.",
+      "age": 988,
+      "city": "Northgate",
+      "device": "LAP-3390"
     },
     {
       "name": "Hollis Brandt",
       "role": "Regional Director",
       "known": true,
       "ask": "I am on with the payments desk and they will not lift the freeze without a code off an analyst phone. Yours came through. Read it to me and I will handle the rest.",
-      "escalate": "I do not have time to explain the chain here. I am asking you directly. The code, now, and we are done for the night."
+      "escalate": "I do not have time to explain the chain here. I am asking you directly. The code, now, and we are done for the night.",
+      "age": 1540,
+      "city": "Ridgemont",
+      "device": "LAP-8812"
     },
     {
       "name": "Yara Okonjo",
       "role": "Account Manager, Kestrel Vouchers",
       "known": false,
       "ask": "Hi, from Kestrel Vouchers. Linking our portal to your Meridian account for tonight's invoice run. The link step sends you a 6 digit code. Can you pass it over?",
-      "escalate": "Our run closes at midnight on our side. If the link is not done the invoices bounce back and your team gets the late fee, not us."
+      "escalate": "Our run closes at midnight on our side. If the link is not done the invoices bounce back and your team gets the late fee, not us.",
+      "age": 9,
+      "city": null,
+      "device": null
     },
     {
       "name": "Petra Vance",
       "role": "Device Support",
       "known": false,
       "ask": "We flagged an old laptop still attached to your profile. Wiping it off now. The removal will not commit until you confirm the code we pushed to your phone.",
-      "escalate": "That device is still authenticated to your account while we wait. Every minute it stays on is on the incident log. Just send the digits."
+      "escalate": "That device is still authenticated to your account while we wait. Every minute it stays on is on the incident log. Just send the digits.",
+      "age": 2,
+      "city": null,
+      "device": null
     }
   ],
   "refuse": "I do not share verification codes. If this is real, open a ticket and I will confirm through the desk.",
