@@ -275,6 +275,20 @@ input::selection {
   }
 }
 
+.blink {
+  animation: caretblink 800ms steps(1) infinite;
+}
+
+@keyframes caretblink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
 .flash-bad {
   animation: flashbad 100ms steps(2) 2;
 }

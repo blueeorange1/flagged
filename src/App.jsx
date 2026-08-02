@@ -54,6 +54,13 @@ export default function App() {
   const [hintStep, setHintStep] = useState(0)
   const [flash, setFlash] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
+  const [tutSkip, setTutSkip] = useState(false)
+  const [skipAsk, setSkipAsk] = useState(false)
+  const [typedN, setTypedN] = useState(0)
+  const [ready, setReady] = useState(false)
+  const [review, setReview] = useState(null)
+  const hintHist = useRef([])
+  const pendingAsk = useRef(false)
 
   const [wins, setWins] = useState(DEFAULT_WINS)
   const [zorder, setZorder] = useState(['ledger', 'inbox', 'sentry', 'relay'])
@@ -87,23 +94,87 @@ export default function App() {
     startedAt.current = Date.now()
     setHintStep(0)
     setFlash(null)
+    setReview(null)
+    hintHist.current = []
+    pendingAsk.current = false
   }, [cur])
-
-  // Timed tutorial hints: the explanation beats advance on their own.
-  useEffect(() => {
-    if (phase !== 'play' || !cur || !cur.tut) return
-    const timed =
-      (cur.tut === 'fraud' && hintStep === 2) || (cur.tut === 'legit' && hintStep === 1)
-    if (!timed) return
-    const t = setTimeout(() => setHintStep((h) => h + 1), 3200)
-    return () => clearTimeout(t)
-  }, [hintStep, cur, phase])
 
   useEffect(() => {
     if (!flash) return
     const t = setTimeout(() => setFlash(null), 3200)
     return () => clearTimeout(t)
   }, [flash])
+
+  const hintObj = hintLine()
+  const liveHint = hintObj ? hintObj.text : null
+
+  useEffect(() => {
+    if (liveHint && review === null && hintHist.current[hintHist.current.length - 1] !== liveHint)
+      hintHist.current.push(liveHint)
+  }, [liveHint, review])
+
+  const hintText = review !== null ? hintHist.current[review] : liveHint
+
+  useEffect(() => {
+    setTypedN(0)
+    setReady(false)
+    if (!hintText) return
+    const iv = setInterval(() => {
+      setTypedN((n) => {
+        if (n >= hintText.length) {
+          clearInterval(iv)
+          return n
+        }
+        if ((n + 1) % 3 === 0) sfx.blip()
+        return n + 1
+      })
+    }, 28)
+    return () => clearInterval(iv)
+  }, [hintText])
+
+  const typedDone = !!hintText && typedN >= hintText.length
+
+  useEffect(() => {
+    if (!typedDone) return
+    const t = setTimeout(() => setReady(true), 700)
+    return () => clearTimeout(t)
+  }, [typedDone, hintText])
+
+  useEffect(() => {
+    if (ready && review === null && pendingAsk.current && cur && cur.tut === 'ask' && hintStep === 0) {
+      pendingAsk.current = false
+      setHintStep(1)
+    }
+  }, [ready, review, cur, hintStep])
+
+  function completeLine() {
+    if (hintText) setTypedN(hintText.length)
+  }
+
+  function stripClick() {
+    if (!hintText) return
+    if (!typedDone) {
+      completeLine()
+      return
+    }
+    if (!ready) return
+    if (review !== null) {
+      sfx.click()
+      setReview(review + 1 >= hintHist.current.length ? null : review + 1)
+      return
+    }
+    if (hintObj && hintObj.adv === 'click') {
+      sfx.click()
+      setHintStep((h) => h + 1)
+    }
+  }
+
+  function hintBack() {
+    const at = review === null ? hintHist.current.length - 1 : review
+    if (at <= 0) return
+    sfx.click()
+    setReview(at - 1)
+  }
 
   useEffect(() => {
     setTimeLeft(phase === 'play' && day >= 2 ? TIMER_SECONDS : null)
@@ -138,7 +209,13 @@ export default function App() {
   function focus(id) {
     opened.current.add(id)
     setZorder((z) => (z[z.length - 1] === id ? z : [...z.filter((x) => x !== id), id]))
+    if (tutSkip) return
     if (phase === 'tour' && id === TOUR[tour][0]) {
+      if (!typedDone) {
+        completeLine()
+        return
+      }
+      if (!ready || review !== null) return
       sfx.open()
       if (tour + 1 >= TOUR.length) {
         setTour(TOUR.length)
@@ -149,9 +226,17 @@ export default function App() {
       return
     }
     if (phase === 'play' && cur && cur.tut) {
-      if (cur.tut === 'fraud' && hintStep === 0 && id === 'ledger') setHintStep(1)
-      else if (cur.tut === 'fraud' && hintStep === 1 && id === 'sentry') setHintStep(2)
-      else if (cur.tut === 'legit' && hintStep === 0 && id === 'sentry') setHintStep(1)
+      const wants =
+        (cur.tut === 'fraud' && hintStep === 0 && id === 'ledger') ||
+        (cur.tut === 'fraud' && hintStep === 1 && id === 'sentry') ||
+        (cur.tut === 'legit' && hintStep === 0 && id === 'sentry')
+      if (!wants) return
+      if (!typedDone) {
+        completeLine()
+        return
+      }
+      if (!ready || review !== null) return
+      setHintStep((h) => h + 1)
     }
   }
 
@@ -165,7 +250,10 @@ export default function App() {
   }, [])
 
   async function send(text) {
-    if (cur.tut === 'ask' && hintStep === 0) setHintStep(1)
+    if (!tutSkip && cur.tut === 'ask' && hintStep === 0) {
+      if (ready && review === null) setHintStep(1)
+      else pendingAsk.current = true
+    }
     setFlash(null)
     setChat((c) => [...c, { from: 'me', text }])
     setBusy(true)
@@ -178,17 +266,17 @@ export default function App() {
   function decide(decision, expired = false) {
     if (phase !== 'play') return
     const c = cur
-    if (c.tut === 'fraud' && decision === 'approve') {
+    if (!tutSkip && c.tut === 'fraud' && decision === 'approve') {
       setFlash('Blocked. That wires $6,200 to whoever is really in ' + c.evidence.ipCity + '. Press HOLD.')
       sfx.wrong()
       return
     }
-    if (c.tut === 'legit' && decision === 'hold') {
+    if (!tutSkip && c.tut === 'legit' && decision === 'hold') {
       setFlash('Blocked. This one is real. Holding it stops a real person working. Press APPROVE.')
       sfx.wrong()
       return
     }
-    if (c.tut === 'ask' && !chat.some((m) => m.from === 'me')) {
+    if (!tutSkip && c.tut === 'ask' && !chat.some((m) => m.from === 'me')) {
       setFlash('Ask them something in RELAY first. Type a question and press SEND.')
       sfx.wrong()
       return
@@ -297,36 +385,41 @@ export default function App() {
     setHistory([])
     setArchive([])
     setTour(0)
+    setTutSkip(false)
+    setSkipAsk(false)
+    setReview(null)
+    hintHist.current = []
     setPhase('brief')
   }
 
-  function hintText() {
-    if (phase === 'tour') return TOUR[tour][1]
+  function hintLine() {
+    if (tutSkip) return null
+    if (phase === 'tour') return { text: TOUR[tour][1], adv: 'action' }
     if (phase !== 'play' || !cur || day !== 1) return null
     const e = cur.evidence
     if (cur.tut === 'fraud') {
       const gap = Math.round((e.sessionTs - e.lastLoginTs) / 60000)
       return [
-        'A payment is waiting in LEDGER. Click it and read the memo.',
-        'The memo says ' + cur.sender.name.split(' ')[0] + ' is in ' + e.lastKnownCity + '. Check SENTRY.',
-        'SENTRY: login from ' + e.ipCity + ' only ' + gap + ' min after ' + e.lastKnownCity + '. Impossible travel.',
-        'This is fraud. Press HOLD.',
+        { text: 'A payment is waiting in LEDGER. Click it and read the memo.', adv: 'action' },
+        { text: 'The memo says ' + cur.sender.name.split(' ')[0] + ' is in ' + e.lastKnownCity + '. Check SENTRY.', adv: 'action' },
+        { text: 'SENTRY: login from ' + e.ipCity + ' only ' + gap + ' min after ' + e.lastKnownCity + '. Impossible travel.', adv: 'click' },
+        { text: 'This is fraud. Press HOLD.', adv: 'none' },
       ][hintStep]
     }
     if (cur.tut === 'legit') {
       return [
-        'Not everything is an attack. Check SENTRY again.',
-        'Same city, same device, known vendor. This one is real.',
-        'Blocking real work has a cost too. Press APPROVE.',
+        { text: 'Not everything is an attack. Check SENTRY again.', adv: 'action' },
+        { text: 'Same city, same device, known vendor. This one is real.', adv: 'click' },
+        { text: 'Blocking real work has a cost too. Press APPROVE.', adv: 'none' },
       ][hintStep]
     }
     if (cur.tut === 'ask') {
       return [
-        'Not sure? Ask them in RELAY. Real people answer consistently.',
-        'Compare their answers with SENTRY, then make your call.',
+        { text: 'Not sure? Ask them in RELAY. Real people answer consistently.', adv: 'action' },
+        { text: 'Compare their answers with SENTRY, then make your call.', adv: 'none' },
       ][hintStep]
     }
-    return 'You are on your own now.'
+    return { text: 'You are on your own now.', adv: 'none' }
   }
 
   const panes = {
@@ -353,7 +446,9 @@ export default function App() {
 
   const focused = zorder[zorder.length - 1]
   const tourTarget = phase === 'tour' ? TOUR[tour][0] : null
-  const hint = hintText()
+  const hintAt = review === null ? hintHist.current.length - 1 : review
+  const showContinue = ready && (review !== null || (hintObj && hintObj.adv === 'click'))
+  const tutActive = day === 1 && !tutSkip && (phase === 'tour' || (phase === 'play' && cur && cur.tut))
 
   return (
     <div id="screen">
@@ -385,6 +480,34 @@ export default function App() {
             {accuracy}%
           </span>
           <span style={{ flex: 1 }} />
+          {tutActive &&
+            (skipAsk ? (
+              <>
+                <span style={{ color: 'var(--color-c14)' }}>SKIP?</span>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    sfx.click()
+                    setTutSkip(true)
+                    setSkipAsk(false)
+                    setReview(null)
+                    if (phase === 'tour') {
+                      setTour(TOUR.length)
+                      setPhase('play')
+                    }
+                  }}
+                >
+                  Y
+                </button>
+                <button className="btn" onClick={() => { sfx.click(); setSkipAsk(false) }}>
+                  N
+                </button>
+              </>
+            ) : (
+              <button className="btn" onClick={() => { sfx.click(); setSkipAsk(true) }}>
+                SKIP TUT
+              </button>
+            ))}
           <button className="btn" onClick={() => { sfx.click(); setShowRules(true) }}>
             ?
           </button>
@@ -444,8 +567,49 @@ export default function App() {
           <div style={{ flex: 1, minWidth: 0 }}>
             {flash ? (
               <div style={{ color: 'var(--color-c14)' }}>{flash}</div>
-            ) : hint ? (
-              <div style={{ color: 'var(--color-c11)' }}>{hint}</div>
+            ) : hintText ? (
+              <div
+                id="hintstrip"
+                onClick={stripClick}
+                style={{
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  cursor: 'pointer',
+                  minHeight: 18,
+                }}
+              >
+                {hintAt > 0 && (
+                  <button
+                    className="btn"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      hintBack()
+                    }}
+                  >
+                    BACK
+                  </button>
+                )}
+                <div style={{ color: review !== null ? 'var(--color-c07)' : 'var(--color-c11)', flex: 1 }}>
+                  {hintText.slice(0, typedN)}
+                </div>
+                {showContinue && (
+                  <span
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      bottom: 0,
+                      background: 'var(--color-c00)',
+                      paddingLeft: 2,
+                      color: 'var(--color-c12)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    CLICK TO CONTINUE<span className="blink">_</span>
+                  </span>
+                )}
+              </div>
             ) : (
               <>
                 <div style={{ color: 'var(--color-c06)' }}>

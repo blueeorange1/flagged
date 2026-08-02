@@ -34,6 +34,7 @@ function tone(freq, dur, type = 'square', gain = 0.05, delay = 0) {
 }
 
 export const sfx = {
+  blip: () => tone(1400, 0.012, 'square', 0.018),
   click: () => tone(440, 0.03, 'square', 0.035),
   open: () => {
     tone(330, 0.03, 'square', 0.04)
