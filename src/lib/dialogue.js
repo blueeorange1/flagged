@@ -44,12 +44,18 @@ export function bakedReply(c, playerText, turn) {
 
   // Score by matched keyword length so a long specific stem ("scam") wins
   // over a short generic one ("you") that happens to appear in every line.
+  // Stems match at word starts only; short words need a full-word match so
+  // "no" cannot fire on "now".
+  const hit = (k) => {
+    const esc = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return new RegExp('\\b' + esc + (k.length <= 3 ? '\\b' : '')).test(text)
+  }
   let best = null
   let bestScore = 0
   for (const r of tree.replies) {
     if (r.claim && !claimable(r.claim, c)) continue
     let score = 0
-    for (const k of r.keywords) if (text.includes(k)) score += k.length
+    for (const k of r.keywords) if (hit(k)) score += k.length
     if (score > bestScore) {
       bestScore = score
       best = r

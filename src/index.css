@@ -60,7 +60,14 @@ body {
   width: 384px;
   height: 216px;
   overflow: hidden;
-  background: var(--color-c00);
+  /* hard-stepped monitor glow centered on the desk area, no tiling */
+  background:
+    radial-gradient(
+      circle at 192px 103px,
+      var(--color-c01) 0 78px,
+      transparent 78px
+    ),
+    var(--color-c00);
   font-size: 7px;
   line-height: 9px;
   transform: scale(var(--stage-scale, 3));
@@ -82,6 +89,7 @@ img {
   position: absolute;
   background: var(--color-c01);
   border: 1px solid var(--color-c02);
+  box-shadow: 1px 1px 0 var(--color-c00);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -89,6 +97,7 @@ img {
 
 .win-focused {
   border-color: var(--color-c07);
+  box-shadow: 2px 2px 0 var(--color-c00);
 }
 
 .win-bar {
@@ -99,13 +108,13 @@ img {
   gap: 2px;
   padding: 0 2px;
   background: var(--color-c02);
-  color: var(--color-c08);
+  color: var(--color-c07);
   cursor: grab;
 }
 
 .win-focused .win-bar {
-  background: var(--color-c05);
-  color: var(--color-c09);
+  background: var(--color-c06);
+  color: var(--color-c00);
 }
 
 .win-body {
@@ -116,15 +125,21 @@ img {
 }
 
 .win-body::-webkit-scrollbar {
-  width: 3px;
+  width: 4px;
 }
 
 .win-body::-webkit-scrollbar-track {
   background: var(--color-c00);
+  border-left: 1px solid var(--color-c01);
 }
 
 .win-body::-webkit-scrollbar-thumb {
   background: var(--color-c05);
+  border: 1px solid var(--color-c00);
+}
+
+.win-body::-webkit-scrollbar-thumb:hover {
+  background: var(--color-c06);
 }
 
 .btn {
@@ -138,13 +153,18 @@ img {
   line-height: 9px;
 }
 
-.btn:hover {
+.btn:hover:not(:disabled) {
   background: var(--color-c05);
   color: var(--color-c09);
 }
 
+.btn:active:not(:disabled) {
+  transform: translate(1px, 1px);
+}
+
 .btn:disabled {
   color: var(--color-c02);
+  border-color: var(--color-c01);
   cursor: default;
   background: var(--color-c01);
 }
@@ -154,7 +174,7 @@ img {
   color: var(--color-c10);
 }
 
-.btn-ok:hover {
+.btn-ok:hover:not(:disabled) {
   background: var(--color-c10);
   color: var(--color-c00);
 }
@@ -164,7 +184,7 @@ img {
   color: var(--color-c14);
 }
 
-.btn-no:hover {
+.btn-no:hover:not(:disabled) {
   background: var(--color-c14);
   color: var(--color-c00);
 }
@@ -182,7 +202,15 @@ input {
 }
 
 input:focus {
-  border-color: var(--color-c07);
+  border-color: var(--color-c12);
+  background: var(--color-c01);
+  color: var(--color-c09);
+  caret-color: var(--color-c12);
+}
+
+input::selection {
+  background: var(--color-c05);
+  color: var(--color-c09);
 }
 
 #crt {
@@ -198,8 +226,8 @@ input:focus {
   inset: 0;
   background: repeating-linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0.22) 0px,
-    rgba(0, 0, 0, 0.22) 1px,
+    rgba(46, 34, 47, 0.18) 0px,
+    rgba(46, 34, 47, 0.18) 1px,
     rgba(0, 0, 0, 0) 1px,
     rgba(0, 0, 0, 0) 2px
   );
@@ -215,6 +243,36 @@ input:focus {
     rgba(46, 34, 47, 0.35) 78%,
     rgba(46, 34, 47, 0.75) 100%
   );
+}
+
+.win-ring,
+.pulse-outline {
+  outline: 1px solid var(--color-c12);
+  animation: ringpulse 900ms steps(1) infinite;
+}
+
+.pulse-badge {
+  animation: badgepulse 700ms steps(1) infinite;
+}
+
+@keyframes ringpulse {
+  0%,
+  100% {
+    outline-color: var(--color-c12);
+  }
+  50% {
+    outline-color: var(--color-c14);
+  }
+}
+
+@keyframes badgepulse {
+  0%,
+  100% {
+    color: var(--color-c12);
+  }
+  50% {
+    color: var(--color-c15);
+  }
 }
 
 .flash-bad {

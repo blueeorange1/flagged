@@ -143,7 +143,7 @@ export function Inbox({ c, archive }) {
   )
 }
 
-export function Ledger({ c, balance, personal, history, day }) {
+export function Ledger({ c, balance, personal, history, day, live }) {
   const pending = c.content.kind === 'payment'
   return (
     <div>
@@ -152,14 +152,14 @@ export function Ledger({ c, balance, personal, history, day }) {
 
       <Head>PENDING</Head>
       {pending ? (
-        <>
+        <div className={live ? 'pulse-outline' : ''} style={{ padding: 1 }}>
           <Row k="PAYEE" v={c.content.payee} />
           <Row k="AMOUNT" v={money(c.content.amount)} />
           <Row k="METHOD" v={c.content.method.toUpperCase()} />
           <Row k="ACCT AGE" v={c.content.payeeAccountAgeDays + ' days'} />
           <Row k="TARGET" v={c.target === 'personal' ? 'YOUR ACCOUNT' : 'Meridian ops'} />
           {c.content.memo && <Row k="MEMO" v={c.content.memo} />}
-        </>
+        </div>
       ) : (
         <div style={{ color: 'var(--color-c06)' }}>
           No money movement. This one asks for access.

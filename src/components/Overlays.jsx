@@ -57,7 +57,7 @@ export function Brief({ day, onStart }) {
         </>
       )}
       <button className="btn btn-ok" style={{ marginTop: 4 }} onClick={onStart}>
-        START SHIFT
+        {day === 1 ? 'CLOCK IN' : 'START SHIFT'}
       </button>
     </Modal>
   )
@@ -67,10 +67,12 @@ export function Result({ result, onNext }) {
   const card = result.correct ? null : debriefs[result.tactic] || debriefs.none
 
   return (
-    <Modal title={result.correct ? 'GOOD CALL' : 'THAT ONE COST YOU'}>
+    <Modal title={result.expired ? 'TIME RAN OUT' : result.correct ? 'GOOD CALL' : 'THAT ONE COST YOU'}>
       <div style={{ color: result.correct ? 'var(--color-c10)' : 'var(--color-c14)', marginBottom: 3 }}>
-        You {result.decision === 'approve' ? 'APPROVED' : 'HELD'} it. It was{' '}
-        {result.truth === 'legit' ? 'legitimate' : result.truth.replace(/_/g, ' ')}.
+        {result.expired
+          ? 'It sat on your desk until it expired. Expired requests are held.'
+          : 'You ' + (result.decision === 'approve' ? 'APPROVED' : 'HELD') + ' it.'}{' '}
+        It was {result.truth === 'legit' ? 'legitimate' : result.truth.replace(/_/g, ' ')}.
       </div>
 
       {result.loss > 0 && (
@@ -161,10 +163,24 @@ export function GameOver({ balance, personal, accuracy, obeyed, onRestart }) {
   )
 }
 
+const HOW_TO_PLAY = [
+  'Requests arrive in RELAY, INBOX or LEDGER. The flashing window has the case.',
+  'SENTRY is the truth: every login, device and city.',
+  'Not sure? Ask the sender in RELAY. Real people answer consistently.',
+  'APPROVE sends it. HOLD blocks it. Wrong either way costs you.',
+]
+
 export function RuleBook({ day, onClose }) {
   const active = rulesForDay(day)
   return (
-    <Modal title="ACTIVE RULES">
+    <Modal title="HELP">
+      <div style={{ color: 'var(--color-c11)' }}>HOW TO PLAY</div>
+      {HOW_TO_PLAY.map((l, i) => (
+        <div key={i} style={{ color: 'var(--color-c08)', marginBottom: 2 }}>
+          - {l}
+        </div>
+      ))}
+      <div style={{ color: 'var(--color-c11)', marginTop: 3 }}>ACTIVE RULES</div>
       {active.length === 0 && (
         <div style={{ color: 'var(--color-c06)' }}>
           Nothing automated yet. Tonight it is just you and the log.

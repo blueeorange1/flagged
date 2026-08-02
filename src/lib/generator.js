@@ -44,7 +44,7 @@ const PREFERRED_RULES = {
 }
 
 const DAY_PLAN = {
-  1: ['legit', 'phishing', 'legit', 'social_engineering', 'legit'],
+  1: ['TUT_FRAUD', 'TUT_LEGIT', 'TUT_ASK', 'legit', 'phishing'],
   2: ['legit', 'account_takeover', 'social_engineering', 'legit', 'phishing'],
   3: ['structuring', 'legit', 'social_engineering', 'legit', 'account_takeover'],
   4: ['legit', 'social_engineering', 'TWIST', 'account_takeover', 'legit'],
@@ -329,7 +329,7 @@ function addHerrings(c, rng) {
   }
 }
 
-function makeObvious(c, rng) {
+function makeObvious(c) {
   c.content.obvious = true
   const m = c.content.markers
   if (!m.includes('urgent')) m.push('urgent')
@@ -439,12 +439,178 @@ function buildCase(rng, day, index, truth) {
       plant(c, pick(rng, targets), rng)
       if (day >= 5 && targets.length > 1) plant(c, pick(rng, targets), rng)
     }
-    if (day === 1) makeObvious(c, rng)
+    if (day === 1) makeObvious(c)
   }
 
   addHerrings(c, rng)
   buildRecentEvents(c, rng)
   return c
+}
+
+const TUTORIAL_CASES = {
+  TUT_FRAUD: (day) => {
+    const sessionTs = dayStartTs(day) + 20 * 60000
+    return {
+      id: 'd1-tut-fraud',
+      day,
+      surface: 'ledger',
+      sender: {
+        name: 'Teodor Halden',
+        avatarSeed: 'Teodor Halden',
+        role: 'Finance Lead',
+        knownContact: true,
+        accountAge: 940,
+      },
+      content: {
+        surface: 'ledger',
+        kind: 'payment',
+        amount: 6200,
+        method: 'wire',
+        payee: 'Harborline Freight',
+        payeeAccountAgeDays: 310,
+        markers: ['urgent'],
+        ask: 'Wire $6,200 to Harborline Freight',
+        obvious: true,
+        tells: ['Logged in from Vasska minutes after Bellhaven. Nobody moves that fast.'],
+        memo: 'I am at the Bellhaven office with the vendor right now. Release this tonight.',
+      },
+      evidence: {
+        deviceHash: 'LAP-8812',
+        knownDevices: ['LAP-8812', 'MOB-7745'],
+        ipCity: 'Vasska',
+        ipCountry: 'Kessia',
+        lastKnownCity: 'Bellhaven',
+        lastKnownCountry: world.homeCountry,
+        lastLoginTs: sessionTs - 20 * 60000,
+        sessionTs,
+        localHour: 10,
+        scopeRequested: 'payments',
+        senderScopes: staffByName['Teodor Halden'].scopes,
+        txCount24h: 1,
+        txSum24h: 6200,
+        recentEvents: [
+          { ts: sessionTs - 20 * 60000, type: 'LOGIN', detail: 'session opened', city: 'Bellhaven', device: 'LAP-8812' },
+          { ts: sessionTs - 4 * 60000, type: 'GEO', detail: 'address resolves to Vasska, Kessia', city: 'Vasska', device: 'LAP-8812' },
+          { ts: sessionTs, type: 'REQUEST', detail: 'payment request raised', city: 'Vasska', device: 'LAP-8812' },
+        ],
+      },
+      tactic: 'manufactured_urgency',
+      truth: 'account_takeover',
+      isTwist: false,
+      tut: 'fraud',
+      target: 'company',
+      herrings: [],
+    }
+  },
+  TUT_LEGIT: (day) => {
+    const sessionTs = dayStartTs(day) + 55 * 60000
+    return {
+      id: 'd1-tut-legit',
+      day,
+      surface: 'ledger',
+      sender: {
+        name: 'Ambervale Print',
+        avatarSeed: 'Ambervale Print',
+        role: 'Vendor',
+        knownContact: true,
+        accountAge: 760,
+      },
+      content: {
+        surface: 'ledger',
+        kind: 'payment',
+        amount: 1180,
+        method: 'check',
+        payee: 'Ambervale Print',
+        payeeAccountAgeDays: 820,
+        markers: [],
+        ask: 'Pay $1,180 to Ambervale Print',
+        obvious: false,
+        tells: [],
+        memo: 'March print run, PO 4471. Same as every month.',
+      },
+      evidence: {
+        deviceHash: 'WKS-4471',
+        knownDevices: ['WKS-4471'],
+        ipCity: world.homeCity,
+        ipCountry: world.homeCountry,
+        lastKnownCity: world.homeCity,
+        lastKnownCountry: world.homeCountry,
+        lastLoginTs: sessionTs - 130 * 60000,
+        sessionTs,
+        localHour: 14,
+        scopeRequested: 'vendors',
+        senderScopes: ['vendors', 'reports'],
+        txCount24h: 1,
+        txSum24h: 1180,
+        recentEvents: [
+          { ts: sessionTs - 130 * 60000, type: 'LOGIN', detail: 'session opened', city: world.homeCity, device: 'WKS-4471' },
+          { ts: sessionTs - 40 * 60000, type: 'FILE', detail: 'invoice_march.pdf uploaded', city: world.homeCity, device: 'WKS-4471' },
+          { ts: sessionTs, type: 'REQUEST', detail: 'payment request raised', city: world.homeCity, device: 'WKS-4471' },
+        ],
+      },
+      tactic: 'none',
+      truth: 'legit',
+      isTwist: false,
+      tut: 'legit',
+      target: 'company',
+      herrings: [],
+    }
+  },
+  TUT_ASK: (day) => {
+    const sessionTs = dayStartTs(day) + 100 * 60000
+    return {
+      id: 'd1-tut-ask',
+      day,
+      surface: 'relay',
+      sender: {
+        name: 'Desmond Ito',
+        avatarSeed: 'Desmond Ito',
+        role: 'Accounts Payable',
+        knownContact: false,
+        accountAge: 2,
+      },
+      content: {
+        surface: 'relay',
+        kind: 'payment',
+        amount: 2400,
+        method: 'ach',
+        payee: 'Tallow and Finch Legal',
+        payeeAccountAgeDays: 640,
+        markers: ['urgent'],
+        ask: 'Send $2,400 to Tallow and Finch Legal',
+        obvious: true,
+        tells: ['This account is 2 days old and not in your contacts.'],
+        text:
+          'Hey, it is Desmond from AP. Laptop died so I am on a loaner tonight. Push $2,400 to Tallow and Finch before the filing window closes, please.',
+      },
+      evidence: {
+        deviceHash: 'UNK-5521',
+        knownDevices: ['LAP-8812', 'WKS-2038'],
+        ipCity: 'Ridgemont',
+        ipCountry: world.homeCountry,
+        lastKnownCity: 'Ridgemont',
+        lastKnownCountry: world.homeCountry,
+        lastLoginTs: sessionTs - 90 * 60000,
+        sessionTs,
+        localHour: 15,
+        scopeRequested: 'payments',
+        senderScopes: staffByName['Desmond Ito'].scopes,
+        txCount24h: 1,
+        txSum24h: 2400,
+        recentEvents: [
+          { ts: sessionTs - 90 * 60000, type: 'LOGIN', detail: 'session opened', city: 'Ridgemont', device: 'LAP-8812' },
+          { ts: sessionTs - 8 * 60000, type: 'DEVICE', detail: 'unregistered device UNK-5521', city: 'Ridgemont', device: 'UNK-5521' },
+          { ts: sessionTs, type: 'REQUEST', detail: 'payment request raised', city: 'Ridgemont', device: 'UNK-5521' },
+        ],
+      },
+      tactic: 'trusted_contact_impersonation',
+      truth: 'social_engineering',
+      isTwist: false,
+      tut: 'ask',
+      target: 'company',
+      herrings: [],
+    }
+  },
 }
 
 function buildTwistCase(day) {
@@ -549,6 +715,10 @@ export function generateDay(day, seed) {
   for (let i = 0; i < plan.length; i++) {
     if (plan[i] === 'TWIST') {
       cases.push(buildTwistCase(day))
+      continue
+    }
+    if (TUTORIAL_CASES[plan[i]]) {
+      cases.push(TUTORIAL_CASES[plan[i]](day))
       continue
     }
     let c = null

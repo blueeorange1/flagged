@@ -15,6 +15,9 @@ export default function Win({
   onFocus,
   onMove,
   onMax,
+  dim,
+  ring,
+  pulse,
   children,
 }) {
   const drag = useRef(null)
@@ -48,8 +51,13 @@ export default function Win({
 
   return (
     <div
-      className={'win' + (focused ? ' win-focused' : '')}
-      style={{ ...box, zIndex: z }}
+      className={'win' + (focused ? ' win-focused' : '') + (ring ? ' win-ring' : '')}
+      style={{
+        ...box,
+        zIndex: z,
+        filter: dim ? 'brightness(0.4)' : undefined,
+        pointerEvents: dim ? 'none' : undefined,
+      }}
       onPointerDown={() => onFocus(id)}
     >
       <div
@@ -61,7 +69,9 @@ export default function Win({
       >
         <span style={{ flex: 1 }}>{title}</span>
         {badge > 0 && (
-          <span style={{ color: 'var(--color-c12)' }}>{badge}</span>
+          <span className={pulse ? 'pulse-badge' : ''} style={{ color: 'var(--color-c12)' }}>
+            !
+          </span>
         )}
         <span
           style={{ cursor: 'pointer', padding: '0 1px' }}
