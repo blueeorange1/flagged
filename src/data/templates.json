@@ -67,7 +67,7 @@
   },
 
   "secrecy_isolation": {
-    "surfaces": ["relay"],
+    "surfaces": ["relay", "ledger", "inbox"],
     "relay": [
       {
         "text": "Keep this between us. We are closing an acquisition and if it leaks the price moves. Move {amount} to {payee} and do not mention it to Finance or IT.",
@@ -78,6 +78,32 @@
         "text": "Do not loop anyone in on this one. There is an internal investigation and half the team is in scope. Just you and me. {amount} to {payee}.",
         "markers": ["secrecy", "skip_verification", "threat"],
         "ask": "Move {amount} to {payee}"
+      }
+    ],
+    "ledger": [
+      {
+        "memo": "{payee} - {amount} - confidential, do not route to Finance",
+        "markers": ["secrecy", "skip_verification"],
+        "ask": "Approve {amount} to {payee} outside the normal chain"
+      },
+      {
+        "memo": "{payee} - special project - approver waived, see VP",
+        "markers": ["secrecy", "invokes_authority"],
+        "ask": "Approve {amount} to {payee} without a second signature"
+      }
+    ],
+    "inbox": [
+      {
+        "subject": "Confidential - handle alone",
+        "body": "This one stays off the shared queue. Release {amount} to {payee} tonight and log it next week under general costs. Do not copy Finance, do not open a ticket. I will explain when it closes.",
+        "markers": ["secrecy", "skip_verification"],
+        "ask": "Release {amount} to {payee} quietly"
+      },
+      {
+        "subject": "Restricted matter - {payee}",
+        "body": "Only two people know about this and now you are the third. Process {amount} to {payee} under my authority. Any callback to the vendor risks the deal, so skip it.",
+        "markers": ["secrecy", "invokes_authority", "skip_verification"],
+        "ask": "Process {amount} to {payee} without a callback"
       }
     ]
   },

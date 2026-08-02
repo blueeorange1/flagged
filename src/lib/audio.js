@@ -67,9 +67,13 @@ export const sfx = {
     tone(880, 0.05, 'square', 0.05, 0.14)
   },
   buzz: (i = 1) => {
-    tone(64, 0.09, 'square', 0.02 + i * 0.015)
-    tone(58, 0.09, 'square', 0.02 + i * 0.015, 0.1)
-    tone(64, 0.09, 'square', 0.02 + i * 0.015, 0.2)
+    tone(64, 0.06, 'square', 0.02 + i * 0.012)
+    tone(58, 0.06, 'square', 0.02 + i * 0.012, 0.07)
+    tone(64, 0.06, 'square', 0.02 + i * 0.012, 0.14)
+  },
+  rumble: (i = 3) => {
+    tone(38, 0.3 + i * 0.06, 'triangle', 0.03 + i * 0.008)
+    tone(29, 0.34 + i * 0.06, 'triangle', 0.025 + i * 0.008)
   },
   ding: () => {
     tone(988, 0.05, 'triangle', 0.05)

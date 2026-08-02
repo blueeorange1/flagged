@@ -55,6 +55,13 @@ const DAY_PLAN = {
 const SCOPES = ['payments', 'vendors', 'reports', 'admin', 'devices']
 const REVERSIBLE = ['ach', 'card', 'check']
 
+// A message only reaches RELAY when a PERSON is talking to you. Structuring,
+// insider paperwork and stale-invoice fraud never buzz the phone.
+const PERSON_TACTICS = ['trusted_contact_impersonation', 'authority_pressure', 'credential_harvesting']
+
+const isPersonCase = (truth, tactic) =>
+  truth === 'social_engineering' || PERSON_TACTICS.includes(tactic)
+
 const staffByName = Object.fromEntries(world.staff.map((s) => [s.name, s]))
 const farCities = world.cities.filter((c) => c.country !== world.homeCountry)
 
@@ -409,7 +416,10 @@ function pickTactic(rng, truth, tally) {
 
 function buildCase(rng, day, index, truth, tactic) {
   const sender = pickSender(rng, truth, tactic)
-  const surface = pick(rng, templates[tactic].surfaces)
+  const person = isPersonCase(truth, tactic)
+  const all = templates[tactic].surfaces
+  const allowed = person ? all : all.filter((s) => s !== 'relay')
+  const surface = pick(rng, allowed.length ? allowed : all)
   const evidence = buildEvidence(rng, day, sender)
   const content = buildContent(rng, day, truth, tactic, sender, surface)
 
@@ -430,6 +440,8 @@ function buildCase(rng, day, index, truth, tactic) {
     truth,
     isTwist: false,
     target: day >= 4 && truth !== 'legit' && index === 3 ? 'personal' : 'company',
+    // legit senders message you too, so a buzzing phone is never itself a tell
+    phone: surface === 'relay' || (person ? rng() < 0.5 : truth === 'legit' && rng() < 0.4),
   }
 
   if (truth === 'legit') {
@@ -504,6 +516,7 @@ const TUTORIAL_CASES = {
       isTwist: false,
       tut: 'fraud',
       target: 'company',
+      phone: false,
       herrings: [],
     }
   },
@@ -558,6 +571,7 @@ const TUTORIAL_CASES = {
       isTwist: false,
       tut: 'legit',
       target: 'company',
+      phone: false,
       herrings: [],
     }
   },
@@ -617,6 +631,7 @@ const TUTORIAL_CASES = {
       isTwist: false,
       tut: 'ask',
       target: 'company',
+      phone: true,
       herrings: [],
     }
   },
@@ -706,6 +721,7 @@ function buildTwistCase(day) {
     truth: 'social_engineering',
     isTwist: true,
     target: 'company',
+    phone: true,
     herrings: ['Vaughn really is travelling this week.'],
   }
   return c

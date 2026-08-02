@@ -269,10 +269,17 @@ export function bakeLayers(P) {
   return [bakeFar(P), bakeMid(P), bakeNear(P), bakeEdge(P)]
 }
 
-export function drawPhoneClosed(g, P, dx = 0, dy = 0) {
+export function drawPhoneClosed(g, P, dx = 0, dy = 0, glow = 0) {
   const { x, y, w, h } = PHONE
   const px = x + dx
   const py = y + dy
+  if (glow) {
+    // the screen is face down, so its light only escapes as a rim on the desk
+    g.fillStyle = P[glow > 2 ? 12 : 11]
+    g.fillRect(px - 2, py - 2, w + 4, h + 4)
+    g.fillStyle = P[4]
+    g.fillRect(px - 1, py - 1, w + 2, h + 2)
+  }
   g.fillStyle = P[0]
   g.fillRect(px, py, w, h)
   g.fillStyle = P[3] // warm rim from the lamp

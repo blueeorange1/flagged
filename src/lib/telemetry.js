@@ -23,6 +23,9 @@ export function logEvent({
   evidence_windows_opened,
   questioned_sender,
   obeyed_authority,
+  looked_back_at_monitor,
+  gave_away_code,
+  checked_sentry_before_code,
   day,
 }) {
   const event = {
@@ -37,6 +40,9 @@ export function logEvent({
     evidence_windows_opened,
     questioned_sender,
     obeyed_authority,
+    looked_back_at_monitor,
+    gave_away_code,
+    checked_sentry_before_code,
     day,
   }
 

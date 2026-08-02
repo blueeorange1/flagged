@@ -13,14 +13,19 @@ export const SUGGESTED = [
   'Can I call you back on the number in our vendor file?',
 ]
 
+export const unreadOf = (th) =>
+  th.msgs.reduce((n, m) => n + (m.from === 'them' && !m.read ? 1 : 0), 0)
+
 function sortThreads(threads) {
-  return Object.entries(threads).sort(([, a], [, b]) =>
-    b.unread !== a.unread ? b.unread - a.unread : b.lastTs - a.lastTs
-  )
+  return Object.entries(threads).sort(([, a], [, b]) => {
+    const d = unreadOf(b) - unreadOf(a)
+    return d !== 0 ? d : b.lastTs - a.lastTs
+  })
 }
 
 function ListRow({ th, active, onOpen }) {
   const last = th.msgs[th.msgs.length - 1]
+  const unread = unreadOf(th)
   return (
     <div
       data-spot={active ? 'thread-active' : undefined}
@@ -32,7 +37,7 @@ function ListRow({ th, active, onOpen }) {
         padding: 2,
         cursor: 'pointer',
         borderBottom: '1px solid var(--color-c01)',
-        background: th.unread > 0 ? 'var(--color-c01)' : 'transparent',
+        background: unread > 0 ? 'var(--color-c01)' : 'transparent',
       }}
     >
       <Avatar seed={th.sender.avatarSeed} size={14} />
@@ -57,16 +62,19 @@ function ListRow({ th, active, onOpen }) {
           {last ? (last.from === 'me' ? 'you: ' : '') + last.text : ''}
         </div>
       </div>
-      {th.unread > 0 && (
-        <span style={{ background: 'var(--color-c12)', color: 'var(--color-c00)', padding: '0 2px' }}>
-          {th.unread}
+      {unread > 0 && (
+        <span
+          className="pulse-chip"
+          style={{ background: 'var(--color-c12)', color: 'var(--color-c00)', padding: '0 2px' }}
+        >
+          {unread}
         </span>
       )}
     </div>
   )
 }
 
-function Thread({ th, isActive, busy, onSend, suggest, hlFirst, onBack }) {
+function Thread({ th, isActive, code, busy, onSend, suggest, hlFirst, onBack }) {
   const [text, setText] = useState('')
   const endRef = useRef(null)
   const lastThem = th.msgs.map((m) => m.from).lastIndexOf('them')
@@ -132,9 +140,20 @@ function Thread({ th, isActive, busy, onSend, suggest, hlFirst, onBack }) {
         <div ref={endRef} />
       </div>
 
-      {isActive ? (
+      {isActive || code ? (
         <div style={{ flex: '0 0 auto', padding: 2, borderTop: '1px solid var(--color-c02)' }}>
-          {suggest &&
+          {code && (
+            <div style={{ display: 'flex', gap: 2, marginBottom: 2 }}>
+              <button className="btn btn-no" style={{ flex: 1 }} onClick={() => onSend(code.send)}>
+                {code.sendLabel}
+              </button>
+              <button className="btn btn-ok" style={{ flex: 1 }} onClick={() => onSend(code.refuse)}>
+                {code.refuseLabel}
+              </button>
+            </div>
+          )}
+          {!code &&
+            suggest &&
             unasked.map((q) => (
               <button
                 key={q}
@@ -176,7 +195,7 @@ function Thread({ th, isActive, busy, onSend, suggest, hlFirst, onBack }) {
   )
 }
 
-export default function Phone({ threads, view, setView, activeName, busy, onSend, suggest, hlFirst, onClose, dim, aiOn }) {
+export default function Phone({ threads, view, setView, activeName, codeName, code, busy, onSend, suggest, hlFirst, onClose, dim, aiOn }) {
   const th = view.mode === 'thread' ? threads[view.name] : null
   return (
     <div
@@ -218,8 +237,9 @@ export default function Phone({ threads, view, setView, activeName, busy, onSend
         <Thread
           th={th}
           isActive={view.name === activeName}
+          code={codeName && view.name === codeName ? code : null}
           busy={busy}
-          onSend={onSend}
+          onSend={(t) => onSend(t, view.name)}
           suggest={suggest}
           hlFirst={hlFirst}
           onBack={() => setView({ mode: 'list' })}

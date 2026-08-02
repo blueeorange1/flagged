@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Win, { DESK } from './components/Win.jsx'
 import { Inbox, Ledger, Sentry } from './components/Panes.jsx'
-import Phone from './components/Phone.jsx'
+import Phone, { unreadOf } from './components/Phone.jsx'
 import Scene from './components/Scene.jsx'
 import { Brief, Result, DayEnd, GameOver, RuleBook, Settings } from './components/Overlays.jsx'
+import INTERRUPT from './data/interrupt.json' with { type: 'json' }
 import { STAGE } from './lib/scene.js'
 import { generateGame } from './lib/generator.js'
 import { firedRules } from './lib/rules.js'
@@ -15,9 +16,12 @@ import { sfx, setMuted } from './lib/audio.js'
 const START_BALANCE = 340000
 const START_PERSONAL = 12400
 const BREACH_COST = 18000
+const CODE_LOSS = 9800
 const TIMER_SECONDS = 90
 const LIFT_MS = 1200
 const DROP_MS = 600
+const BUZZ_AT = [0, 8000, 20000, 40000]
+const INTR_CHANCE = 0.25
 
 const DEFAULT_WINS = {
   inbox: { x: 2, y: 14, w: 234, h: 112, max: false },
@@ -25,26 +29,25 @@ const DEFAULT_WINS = {
   sentry: { x: 238, y: 14, w: 240, h: 232, max: false },
 }
 
+const WIN_META = {
+  inbox: { title: 'INBOX', accent: 'var(--color-c08)', glyph: '@' },
+  ledger: { title: 'LEDGER', accent: 'var(--color-c04)', glyph: '$' },
+  sentry: { title: 'SENTRY', accent: 'var(--color-c07)', glyph: '*' },
+}
+
 const SYS_SENDER = {
-  name: 'MERIDIAN SECURE',
-  avatarSeed: 'MERIDIAN SECURE',
-  role: 'System',
+  name: INTERRUPT.system.name,
+  avatarSeed: INTERRUPT.system.name,
+  role: INTERRUPT.system.role,
   knownContact: true,
 }
 
 const money = (n) => '$' + Math.round(n).toLocaleString('en-US')
 
-const isCodeCase = (c) => c.tactic === 'credential_harvesting' && c.surface === 'relay'
-
 // same display name can be a known contact or an impersonator - separate threads
 const thKey = (s) => s.name + (s.knownContact ? '' : '~u')
 
-function codeFor(c) {
-  let h = 0
-  for (const ch of c.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  const s = String(100000 + (h % 900000))
-  return s.slice(0, 3) + ' ' + s.slice(3)
-}
+const pick = (a) => a[Math.floor(Math.random() * a.length)]
 
 function connectSegs(a, b) {
   if (b.x + b.w / 2 < a.x + a.w / 2) [a, b] = [b, a]
@@ -193,7 +196,8 @@ export default function App() {
   const [phoneT, setPhoneT] = useState(0)
   const [phoneView, setPhoneView] = useState({ mode: 'list' })
   const [camDir, setCamDir] = useState(null)
-  const [buzzSeq, setBuzzSeq] = useState(0)
+  const [buzz, setBuzz] = useState({ seq: 0, level: 1 })
+  const [intr, setIntr] = useState(null)
 
   const [hintStep, setHintStep] = useState(0)
   const [flash, setFlash] = useState(null)
@@ -215,11 +219,23 @@ export default function App() {
 
   const opened = useRef(new Set())
   const startedAt = useRef(Date.now())
+  const readAt = useRef(0)
+  const lookedBack = useRef(false)
   const phoneRef = useRef({ state: 'closed', view: { mode: 'list' } })
   phoneRef.current = { state: phoneState, view: phoneView }
+  const intrRef = useRef(null)
+  intrRef.current = intr
+  const intrDay = useRef(0)
+  const intrTimers = useRef([])
 
   const cur = game.days[day][idx]
   const accuracy = total === 0 ? 100 : Math.round((right / total) * 100)
+  const phoneUp = phoneState !== 'closed'
+  const caseUnread =
+    !!cur &&
+    Object.values(threads).some((t) =>
+      t.msgs.some((m) => m.from === 'them' && !m.read && m.caseId === cur.id)
+    )
 
   useEffect(() => {
     function fit() {
@@ -231,16 +247,15 @@ export default function App() {
     return () => window.removeEventListener('resize', fit)
   }, [])
 
-  function pushMsg(name, sender, from, text, read) {
+  function pushMsg(name, sender, from, text, read, caseId) {
     setThreads((t) => {
-      const th = t[name] || { sender, msgs: [], unread: 0, lastTs: 0 }
+      const th = t[name] || { sender, msgs: [], lastTs: 0 }
       const ts = th.lastTs ? th.lastTs + 60000 : cur.evidence.sessionTs
       return {
         ...t,
         [name]: {
           sender: th.msgs.length ? th.sender : sender,
-          msgs: [...th.msgs, { from, text, ts }],
-          unread: read ? th.unread : th.unread + 1,
+          msgs: [...th.msgs, { from, text, ts, caseId, read: from === 'me' || !!read }],
           lastTs: ts,
         },
       }
@@ -250,24 +265,30 @@ export default function App() {
   useEffect(() => {
     if (!cur) return
     const first = cur.surface === 'relay' ? cur.content.text : opening(cur)
-    setChat([{ from: 'them', text: first }])
-    if (isCodeCase(cur))
-      pushMsg(
-        thKey(SYS_SENDER),
-        SYS_SENDER,
-        'them',
-        'Meridian sign-in code: ' + codeFor(cur) + '. Never share this code with anyone, including IT or support staff.',
-        false
-      )
-    pushMsg(thKey(cur.sender), cur.sender, 'them', first, false)
+    setChat(cur.phone ? [{ from: 'them', text: first }] : [])
+    if (cur.phone) pushMsg(thKey(cur.sender), cur.sender, 'them', first, false, cur.id)
     setPhoneView({ mode: 'list' })
+    setIntr(null)
     opened.current = new Set()
     startedAt.current = Date.now()
+    readAt.current = 0
+    lookedBack.current = false
     setHintStep(0)
     setFlash(null)
     setReview(null)
     hintHist.current = []
   }, [cur])
+
+  // reading a thread on screen clears it, whether it was already open or not
+  useEffect(() => {
+    if (phoneState !== 'open' || phoneView.mode !== 'thread') return
+    const name = phoneView.name
+    setThreads((t) => {
+      const th = t[name]
+      if (!th || !th.msgs.some((m) => m.from === 'them' && !m.read)) return t
+      return { ...t, [name]: { ...th, msgs: th.msgs.map((m) => ({ ...m, read: true })) } }
+    })
+  }, [threads, phoneState, phoneView])
 
   useEffect(() => {
     if (!flash) return
@@ -357,11 +378,82 @@ export default function App() {
 
   const playing = phase === 'play'
   useEffect(() => {
-    if (playing && cur) {
-      if (cur.surface === 'relay') setBuzzSeq((b) => b + 1)
-      else sfx.msg()
-    }
+    if (playing && cur && !cur.phone) sfx.msg()
   }, [cur, playing])
+
+  // it keeps buzzing, harder each time, until you actually read it
+  useEffect(() => {
+    if (!playing || !caseUnread) return
+    const ts = BUZZ_AT.map((ms, i) =>
+      setTimeout(() => setBuzz((b) => ({ seq: b.seq + 1, level: i + 1 })), ms)
+    )
+    return () => ts.forEach(clearTimeout)
+  }, [cur, playing, caseUnread])
+
+  useEffect(() => {
+    intrTimers.current.forEach(clearTimeout)
+    intrTimers.current = []
+    if (!playing || !cur || cur.tut || day < 3) return
+    if (intrDay.current === day || Math.random() >= INTR_CHANCE) return
+
+    const digits = String(100000 + Math.floor(Math.random() * 900000))
+    const shown = digits.slice(0, 3) + '-' + digits.slice(3)
+    const a = pick(INTERRUPT.askers)
+    const sender = { name: a.name, avatarSeed: a.name, role: a.role, knownContact: a.known }
+    const key = thKey(sender)
+    const at = (ms, fn) => intrTimers.current.push(setTimeout(fn, ms))
+    const t0 = 3000 + Math.random() * 12000
+    const ping = (level) => setBuzz((b) => ({ seq: b.seq + 1, level }))
+
+    at(t0, () => {
+      intrDay.current = day
+      pushMsg(thKey(SYS_SENDER), SYS_SENDER, 'them', pick(INTERRUPT.system.lines).replace('{code}', shown), false, 'interrupt')
+      setIntr({ digits, shown, key, sender, stage: 'sent', gave: false, responded: false, checkedSentry: false })
+      ping(2)
+    })
+    at(t0 + 5000, () => {
+      pushMsg(key, sender, 'them', a.ask, false, 'interrupt')
+      setIntr((v) => v && { ...v, stage: 'asked' })
+      ping(2)
+    })
+    at(t0 + 25000, () => {
+      if (intrRef.current && intrRef.current.stage !== 'asked') return
+      pushMsg(key, sender, 'them', a.escalate, false, 'interrupt')
+      setIntr((v) => v && { ...v, stage: 'escalated' })
+      ping(3)
+    })
+    at(t0 + 42000, () => {
+      if (intrRef.current && intrRef.current.stage !== 'escalated') return
+      pushMsg(key, sender, 'them', INTERRUPT.quiet, false, 'interrupt')
+      setIntr((v) => v && { ...v, stage: 'closed' })
+    })
+
+    return () => {
+      intrTimers.current.forEach(clearTimeout)
+      intrTimers.current = []
+    }
+  }, [cur, playing, day])
+
+  function respondCode(text) {
+    const v = intrRef.current
+    if (!v || v.responded) return
+    const gave = text.replace(/\D/g, '').includes(v.digits)
+    pushMsg(v.key, v.sender, 'me', text, true, 'interrupt')
+    setIntr((x) => x && { ...x, stage: 'closed', responded: true, gave, checkedSentry: opened.current.has('sentry') })
+    if (gave) {
+      setPersonal((p) => Math.max(0, p - CODE_LOSS))
+      sfx.wrong()
+      setFlash('You just read your sign-in code to a stranger. ' + money(CODE_LOSS) + ' left your account.')
+    } else {
+      sfx.hold()
+    }
+    intrTimers.current.push(
+      setTimeout(
+        () => pushMsg(v.key, v.sender, 'them', gave ? 'Got it. You are all set.' : INTERRUPT.quiet, false, 'interrupt'),
+        1600
+      )
+    )
+  }
 
   function startShift() {
     sfx.click()
@@ -388,15 +480,23 @@ export default function App() {
     setPhoneView({ mode: 'list' })
   }
 
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === 'Escape') closePhone()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [phoneState])
+
   function viewThread(v) {
     sfx.open()
     setPhoneView(v)
-    if (v.mode === 'thread')
-      setThreads((t) => (t[v.name] ? { ...t, [v.name]: { ...t[v.name], unread: 0 } } : t))
+    if (v.mode === 'thread' && !readAt.current) readAt.current = Date.now()
   }
 
   function focus(id) {
     opened.current.add(id)
+    if (readAt.current) lookedBack.current = true
     setZorder((z) => (z[z.length - 1] === id ? z : [...z.filter((x) => x !== id), id]))
     if (!inboxHinted && id === 'inbox' && phase === 'play' && cur && !cur.tut && cur.surface === 'inbox')
       setInboxHinted(true)
@@ -428,13 +528,15 @@ export default function App() {
     setWins((w) => ({ ...w, [id]: { ...w[id], max: !w[id].max } }))
   }, [])
 
-  async function send(text) {
+  async function send(text, key) {
+    const v = intrRef.current
+    if (v && key === v.key) return respondCode(text)
     const askTut = !tutSkip && cur.tut === 'ask'
     if (askTut) setHintStep((h) => (h < 3 ? 3 : h))
     setFlash(null)
     setReview(null)
     setChat((c) => [...c, { from: 'me', text }])
-    pushMsg(thKey(cur.sender), cur.sender, 'me', text, true)
+    pushMsg(thKey(cur.sender), cur.sender, 'me', text, true, cur.id)
     setBusy(true)
     const res = await aiReply(cur, chat, text)
     setBusy(false)
@@ -442,7 +544,7 @@ export default function App() {
     setChat((c) => [...c, { from: 'them', text: res.reply, leaked: res.contradictionLeaked }])
     const p = phoneRef.current
     const seen = p.state === 'open' && p.view.mode === 'thread' && p.view.name === thKey(cur.sender)
-    pushMsg(thKey(cur.sender), cur.sender, 'them', res.reply, seen)
+    pushMsg(thKey(cur.sender), cur.sender, 'them', res.reply, seen, cur.id)
     if (askTut) setHintStep((h) => (h < 4 ? 4 : h))
   }
 
@@ -487,6 +589,9 @@ export default function App() {
     }
     if (!correct && decision === 'hold') complaint = true
 
+    const iv = intrRef.current
+    const codeAsk = !!iv && iv.stage !== 'sent'
+
     logEvent({
       incident_type: c.isTwist ? 'twist_authority' : c.surface,
       tactic: c.tactic,
@@ -497,6 +602,13 @@ export default function App() {
       evidence_windows_opened: opened.current.size,
       questioned_sender: questioned,
       obeyed_authority: obeyed,
+      looked_back_at_monitor: lookedBack.current,
+      gave_away_code: codeAsk ? iv.gave : null,
+      checked_sentry_before_code: codeAsk
+        ? iv.responded
+          ? iv.checkedSentry
+          : opened.current.has('sentry')
+        : null,
       day,
     })
 
@@ -526,7 +638,9 @@ export default function App() {
       loss,
       dataLost,
       complaint,
-      codeAsk: isCodeCase(c),
+      codeAsk,
+      gaveCode: codeAsk && iv.gave,
+      codeLoss: CODE_LOSS,
       firedLabels: firedRules(c, day).map((r) => r.label),
     })
 
@@ -555,6 +669,7 @@ export default function App() {
     setDayStats({ right: 0, total: 0, obeyed: 0 })
     setThreads({})
     setPhoneView({ mode: 'list' })
+    setIntr(null)
     setPhase('brief')
     sfx.day()
   }
@@ -574,6 +689,8 @@ export default function App() {
     setThreads({})
     setPhoneState('closed')
     setPhoneView({ mode: 'list' })
+    setIntr(null)
+    intrDay.current = 0
     setCamDir(null)
     setTutSkip(false)
     setSkipAsk(false)
@@ -586,7 +703,7 @@ export default function App() {
   function hintLine() {
     if (tutSkip || phase !== 'play' || !cur) return null
     if (!cur.tut) {
-      if (!inboxHinted && day <= 2 && cur.surface === 'inbox')
+      if (!inboxHinted && day <= 2 && cur.surface === 'inbox' && !caseUnread)
         return {
           text: 'This one came by email. Open INBOX.',
           adv: 'action',
@@ -629,20 +746,32 @@ export default function App() {
         return { text: 'Ask where they are.', adv: 'none', spots: ['suggest-0'], arrow: 'suggest-0', lit: ['relay'] }
       }
       if (hintStep === 3) return { text: 'Wait for the reply.', adv: 'none', lit: ['relay'] }
+      if (caseUnread)
+        return phoneUp
+          ? { text: 'Open the message from ' + first + '.', adv: 'none', spots: ['thread-active'], arrow: 'thread-active', lit: ['relay'] }
+          : { text: 'They answered. Pick your phone back up and read it.', adv: 'none', spots: ['win-relay'], arrow: 'win-relay', lit: ['relay'] }
+      if (phoneUp)
+        return {
+          text: 'Put the phone down first. You cannot use both at once.',
+          adv: 'none',
+          spots: ['phone-close'],
+          arrow: 'phone-close',
+          lit: ['relay'],
+        }
       const q = (chat.find((m) => m.from === 'me') || { text: '' }).text.toLowerCase()
       const dev = q.includes('device')
       const generic = !dev && !q.includes('city') && !q.includes('where')
       if (hintStep === 4) {
         return {
           text: generic
-            ? 'Read their answer. Then click SENTRY.'
+            ? 'Remember their answer. Now click SENTRY.'
             : dev
               ? 'They said LAP-8812. Now look at SENTRY.'
               : 'They said Bellhaven. Now look at SENTRY.',
           adv: 'action',
-          spots: ['reply-last'],
-          arrow: 'reply-last',
-          lit: ['relay', 'sentry'],
+          spots: ['win-sentry'],
+          arrow: 'win-sentry',
+          lit: ['sentry'],
         }
       }
       const line = dev ? 'sentry-dev' : 'sentry-loc'
@@ -653,20 +782,19 @@ export default function App() {
             ? 'SENTRY shows UNK-5521. They just lied to you. Press HOLD.'
             : 'SENTRY says Vasska. They just lied to you. Press HOLD.',
         adv: 'none',
-        spots: generic ? ['reply-last', 'hold'] : ['reply-last', line, 'hold'],
-        connect: generic ? undefined : ['reply-last', line],
+        spots: generic ? ['hold'] : [line, 'hold'],
+        connect: generic ? undefined : [line, 'hold'],
         arrow: 'hold',
-        lit: ['relay', 'sentry'],
+        lit: ['sentry'],
       }
     }
     return null
   }
 
   function objectiveLine(c) {
-    if (c.content.kind === 'access')
-      return isCodeCase(c)
-        ? 'Someone is asking you for a verification code. Decide.'
-        : 'Someone wants account access. Decide.'
+    if (caseUnread) return 'Check your phone. You cannot decide on someone you have not read.'
+    if (phoneUp) return 'Phone is up. PUT DOWN or press Esc to use the monitor.'
+    if (c.content.kind === 'access') return 'Someone wants account access. Decide.'
     return 'Request to send ' + money(c.content.amount) + ' to ' + c.content.payee + '. Decide.'
   }
 
@@ -676,21 +804,18 @@ export default function App() {
     phoneState === 'open' && phoneView.mode === 'thread' && phoneView.name === thKey(cur.sender)
 
   const panes = {
-    inbox: { title: 'INBOX', node: <Inbox c={cur} archive={archive} /> },
-    ledger: {
-      title: 'LEDGER',
-      node: (
-        <Ledger
-          c={cur}
-          balance={balance}
-          personal={personal}
-          history={history}
-          day={day}
-          live={phase === 'play'}
-        />
-      ),
-    },
-    sentry: { title: 'SENTRY', node: <Sentry c={cur} /> },
+    inbox: <Inbox c={cur} archive={archive} />,
+    ledger: (
+      <Ledger
+        c={cur}
+        balance={balance}
+        personal={personal}
+        history={history}
+        day={day}
+        live={phase === 'play'}
+      />
+    ),
+    sentry: <Sentry c={cur} />,
   }
 
   const focused = zorder[zorder.length - 1]
@@ -700,7 +825,16 @@ export default function App() {
   const spotCfg = review === null && !flash ? hintObj : null
   const lit = spotCfg && spotCfg.lit ? spotCfg.lit : null
   const phoneDim = lit !== null && !lit.includes('relay')
-  const unreadTotal = Object.values(threads).reduce((n, t) => n + t.unread, 0)
+  const unreadTotal = Object.values(threads).reduce((n, t) => n + unreadOf(t), 0)
+  const codeName = intr && !intr.responded && intr.stage !== 'sent' ? intr.key : null
+  const codeBtns = intr
+    ? {
+        send: intr.shown,
+        refuse: INTERRUPT.refuse,
+        sendLabel: INTERRUPT.sendLabel,
+        refuseLabel: INTERRUPT.refuseLabel,
+      }
+    : null
 
   return (
     <div id="screen">
@@ -709,7 +843,8 @@ export default function App() {
           <Scene
             phoneState={phoneState}
             phoneT={phoneT}
-            buzzSeq={buzzSeq}
+            buzzSeq={buzz.seq}
+            buzzLevel={buzz.level}
             unread={unreadTotal}
             onPhone={openPhone}
             locked={phoneDim || phase !== 'play'}
@@ -731,6 +866,8 @@ export default function App() {
                 padding: '0 2px',
                 whiteSpace: 'nowrap',
                 zIndex: 700,
+                filter: phoneUp ? 'brightness(0.4)' : undefined,
+                pointerEvents: phoneUp ? 'none' : undefined,
               }}
             >
               <span style={{ color: 'var(--color-c12)' }}>FLAGGED</span>
@@ -791,20 +928,22 @@ export default function App() {
               <Win
                 key={id}
                 id={id}
-                title={panes[id].title}
+                title={WIN_META[id].title}
+                accent={WIN_META[id].accent}
+                glyph={WIN_META[id].glyph}
                 rect={wins[id]}
                 z={10 + zorder.indexOf(id)}
                 focused={focused === id}
                 badge={cur && cur.surface === id ? 1 : 0}
                 pulse={phase === 'play'}
-                dim={lit !== null && !lit.includes(id)}
+                dim={phoneUp || (lit !== null && !lit.includes(id))}
                 scale={scale * (phoneState === 'closed' ? 1 : 1.15)}
                 onFocus={focus}
                 onMove={move}
                 onSize={size}
                 onMax={toggleMax}
               >
-                {panes[id].node}
+                {panes[id]}
               </Win>
             ))}
 
@@ -892,7 +1031,7 @@ export default function App() {
                 className="btn btn-ok t14"
                 data-spot="approve"
                 style={{ padding: '2px 5px' }}
-                disabled={phase !== 'play'}
+                disabled={phase !== 'play' || phoneUp || caseUnread}
                 onClick={() => decide('approve')}
               >
                 APPROVE
@@ -901,7 +1040,7 @@ export default function App() {
                 className="btn btn-no t14"
                 data-spot="hold"
                 style={{ padding: '2px 5px' }}
-                disabled={phase !== 'play'}
+                disabled={phase !== 'play' || phoneUp || caseUnread}
                 onClick={() => decide('hold')}
               >
                 HOLD
@@ -917,7 +1056,9 @@ export default function App() {
               threads={threads}
               view={phoneView}
               setView={viewThread}
-              activeName={cur ? thKey(cur.sender) : null}
+              activeName={cur && cur.phone ? thKey(cur.sender) : null}
+              codeName={codeName}
+              code={codeBtns}
               busy={busy}
               onSend={send}
               suggest={suggest}

@@ -64,10 +64,10 @@ export function Brief({ day, onStart }) {
 }
 
 export function Result({ result, onNext }) {
-  const card = result.correct
-    ? null
-    : result.codeAsk
-      ? debriefs.code_readback
+  const card = result.codeAsk
+    ? debriefs.code_readback
+    : result.correct
+      ? null
       : debriefs[result.tactic] || debriefs.none
 
   return (
@@ -87,6 +87,15 @@ export function Result({ result, onNext }) {
       {result.dataLost && <div style={{ color: 'var(--color-c14)' }}>Credentials handed over. Access revoked and reset.</div>}
       {result.complaint && (
         <div style={{ color: 'var(--color-c15)' }}>Complaint filed. Real work sat blocked.</div>
+      )}
+      {result.codeAsk && (
+        <div style={{ color: result.gaveCode ? 'var(--color-c14)' : 'var(--color-c10)', marginTop: 3 }}>
+          {result.gaveCode
+            ? 'While you worked, you read your sign-in code out to a stranger. They emptied ' +
+              money(result.codeLoss) +
+              ' from your own account.'
+            : 'While you worked, someone tried to talk your sign-in code out of you. You did not give it up.'}
+        </div>
       )}
 
       {result.firedLabels.length > 0 && (
@@ -168,10 +177,12 @@ export function GameOver({ balance, personal, accuracy, obeyed, onRestart }) {
 }
 
 const HOW_TO_PLAY = [
-  'Requests arrive on your phone, in INBOX or in LEDGER. The flashing spot has the case.',
+  'Most cases sit on the monitor, in INBOX or LEDGER. Some arrive as a message and the phone buzzes.',
+  'You cannot use the phone and the monitor at once. PUT DOWN (or Esc) to get back to the screen.',
   'SENTRY is the truth: every login, device and city.',
-  'Not sure? Pick up the phone and message the sender. Tap a suggested question or type your own.',
+  'If someone messaged you, read it before you decide. Tap a suggested question or type your own.',
   'APPROVE sends it. HOLD blocks it. Wrong either way costs you.',
+  'Nobody legitimate will ever ask you to read back a verification code.',
 ]
 
 export function RuleBook({ day, onClose }) {

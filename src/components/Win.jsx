@@ -14,6 +14,8 @@ export default function Win({
   z,
   focused,
   badge,
+  accent,
+  glyph,
   scale,
   onFocus,
   onMove,
@@ -75,6 +77,7 @@ export default function Win({
       style={{
         ...box,
         zIndex: z,
+        '--accent': accent,
         filter: dim ? 'brightness(0.4)' : undefined,
         pointerEvents: dim ? 'none' : undefined,
       }}
@@ -87,6 +90,7 @@ export default function Win({
         onPointerUp={onUp}
         onDoubleClick={() => onMax(id)}
       >
+        <span className="win-glyph">{glyph}</span>
         <span style={{ flex: 1 }}>{title}</span>
         {badge > 0 && (
           <span className={pulse ? 'pulse-badge' : ''} style={{ color: 'var(--color-c12)' }}>

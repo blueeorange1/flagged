@@ -169,13 +169,19 @@ img {
   gap: 2px;
   padding: 0 2px;
   background: var(--color-c02);
-  color: var(--color-c07);
+  color: var(--accent, var(--color-c07));
   cursor: grab;
 }
 
 .win-focused .win-bar {
-  background: var(--color-c06);
+  background: var(--accent, var(--color-c06));
   color: var(--color-c00);
+}
+
+.win-glyph {
+  display: inline-block;
+  width: 5px;
+  text-align: center;
 }
 
 .win-body {
@@ -183,6 +189,8 @@ img {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px;
+  border-top: 1px solid var(--accent, var(--color-c02));
+  line-height: 10px;
 }
 
 .win-body::-webkit-scrollbar {
@@ -370,6 +378,20 @@ input::selection {
 
 .pulse-badge {
   animation: badgepulse 700ms steps(1) infinite;
+}
+
+.pulse-chip {
+  animation: chippulse 700ms steps(1) infinite;
+}
+
+@keyframes chippulse {
+  0%,
+  100% {
+    background: var(--color-c12);
+  }
+  50% {
+    background: var(--color-c15);
+  }
 }
 
 @keyframes ringpulse {

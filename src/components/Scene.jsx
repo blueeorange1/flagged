@@ -4,10 +4,10 @@ import { sfx } from '../lib/audio.js'
 
 const LIFT_MS = 1200
 const DROP_MS = 600
-const BUZZ_CYCLE = 960
-const BUZZ_ON = 360
+const BUZZ_CYCLE = 300
+const BUZZ_ON = 190
 
-export default function Scene({ phoneState, phoneT, buzzSeq, unread, onPhone, locked }) {
+export default function Scene({ phoneState, phoneT, buzzSeq, buzzLevel, unread, onPhone, locked }) {
   const canvasRef = useRef(null)
   const roomRef = useRef(null)
   const palRef = useRef(null)
@@ -18,8 +18,10 @@ export default function Scene({ phoneState, phoneT, buzzSeq, unread, onPhone, lo
 
   useEffect(() => {
     if (buzzSeq > 0 && phoneState === 'closed') {
-      buzzRef.current = { start: performance.now() }
-      for (let i = 0; i < 3; i++) setTimeout(() => sfx.buzz(i + 1), i * BUZZ_CYCLE)
+      const n = Math.max(1, Math.min(4, buzzLevel || 1))
+      buzzRef.current = { start: performance.now(), n }
+      for (let i = 0; i < n; i++) setTimeout(() => sfx.buzz(n), i * BUZZ_CYCLE)
+      if (n >= 3) sfx.rumble(n)
       setTimeout(() => sfx.ding(), BUZZ_ON)
     }
   }, [buzzSeq])
@@ -43,20 +45,22 @@ export default function Scene({ phoneState, phoneT, buzzSeq, unread, onPhone, lo
       let sig = st
       let dx = 0
       let dy = 0
+      let glow = 0
       if (st === 'closed') {
         const b = buzzRef.current
         if (b) {
           const t = now - b.start
           const cycle = Math.floor(t / BUZZ_CYCLE)
-          if (cycle >= 3) buzzRef.current = null
+          if (cycle >= b.n) buzzRef.current = null
           else {
             const ph = t - cycle * BUZZ_CYCLE
             if (ph < BUZZ_ON) {
-              const amp = cycle + 1
-              const f = Math.floor(ph / 90) % 4
+              const amp = b.n
+              const f = Math.floor(ph / 48) % 4
               dx = [amp, -amp, amp, 0][f]
               dy = [0, amp, -amp, 0][f]
-              sig = 'buzz' + cycle + '-' + f
+              glow = b.n
+              sig = 'buzz' + b.n + '-' + cycle + '-' + f
             }
           }
         }
@@ -70,7 +74,7 @@ export default function Scene({ phoneState, phoneT, buzzSeq, unread, onPhone, lo
 
       const g = cv.getContext('2d')
       for (const l of roomRef.current) g.drawImage(l, 0, 0)
-      if (st === 'closed') drawPhoneClosed(g, P, dx, dy)
+      if (st === 'closed') drawPhoneClosed(g, P, dx, dy, glow)
       else if (st === 'lift') drawPickup(g, P, Math.min(1, (now - t0) / LIFT_MS))
       else if (st === 'drop') drawPickup(g, P, Math.max(0.01, 1 - (now - t0) / DROP_MS))
     }
@@ -105,7 +109,7 @@ export default function Scene({ phoneState, phoneT, buzzSeq, unread, onPhone, lo
       )}
       {phoneState === 'closed' && unread > 0 && (
         <div
-          className="pulse-badge"
+          className="pulse-chip"
           style={{
             position: 'absolute',
             left: PHONE.x + PHONE.w - 6,
