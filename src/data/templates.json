@@ -1,0 +1,235 @@
+{
+  "authority_pressure": {
+    "surfaces": ["relay", "inbox"],
+    "relay": [
+      {
+        "text": "This is Vaughn. I am in a board session and cannot talk. Release the {amount} to {payee} now. Do not route it through Finance, I already signed off.",
+        "markers": ["invokes_authority", "skip_verification", "urgent"],
+        "ask": "Release {amount} to {payee}"
+      },
+      {
+        "text": "I need this handled in the next ten minutes. I am the one who approves the approvers. Push the {amount} to {payee} and we will do the paperwork Monday.",
+        "markers": ["invokes_authority", "skip_verification", "urgent"],
+        "ask": "Release {amount} to {payee}"
+      }
+    ],
+    "inbox": [
+      {
+        "subject": "Handle this personally - do not forward",
+        "body": "I am travelling and my calls keep dropping. Wire {amount} to {payee} today. I have cleared it at my level, so the usual second signature is not required. Confirm when done.",
+        "markers": ["invokes_authority", "skip_verification", "secrecy"],
+        "ask": "Wire {amount} to {payee}"
+      },
+      {
+        "subject": "Approval override - {payee}",
+        "body": "Per my authority as VP, the hold on {payee} is lifted. Process {amount} without the vendor callback. Questions go to me, not to Finance.",
+        "markers": ["invokes_authority", "skip_verification"],
+        "ask": "Process {amount} to {payee}"
+      }
+    ]
+  },
+
+  "manufactured_urgency": {
+    "surfaces": ["relay", "inbox", "ledger"],
+    "relay": [
+      {
+        "text": "{payee} is threatening to stop the shipment tonight. If the {amount} is not out in fifteen minutes the whole contract dies. Please just send it.",
+        "markers": ["urgent", "threat"],
+        "ask": "Send {amount} to {payee}"
+      },
+      {
+        "text": "Cutoff is in eight minutes. I know this is not the normal way but there is no time to open a ticket. {amount} to {payee}, go.",
+        "markers": ["urgent", "skip_verification"],
+        "ask": "Send {amount} to {payee}"
+      }
+    ],
+    "inbox": [
+      {
+        "subject": "FINAL NOTICE - account suspension in 2 hours",
+        "body": "Payment of {amount} to {payee} is past due. Services for {company} will be suspended at 02:00 and reinstatement carries a penalty. Settle immediately to avoid interruption.",
+        "markers": ["urgent", "threat"],
+        "ask": "Settle {amount} with {payee}"
+      },
+      {
+        "subject": "Shipment held at depot - action required now",
+        "body": "{payee} has your freight on hold. Release fee of {amount} must clear tonight or the load is returned at your cost. Reply once sent.",
+        "markers": ["urgent", "threat"],
+        "ask": "Pay {amount} release fee to {payee}"
+      }
+    ],
+    "ledger": [
+      {
+        "memo": "RUSH - {payee} - release tonight",
+        "markers": ["urgent"],
+        "ask": "Approve rush payment of {amount} to {payee}"
+      }
+    ]
+  },
+
+  "secrecy_isolation": {
+    "surfaces": ["relay"],
+    "relay": [
+      {
+        "text": "Keep this between us. We are closing an acquisition and if it leaks the price moves. Move {amount} to {payee} and do not mention it to Finance or IT.",
+        "markers": ["secrecy", "invokes_authority"],
+        "ask": "Move {amount} to {payee}"
+      },
+      {
+        "text": "Do not loop anyone in on this one. There is an internal investigation and half the team is in scope. Just you and me. {amount} to {payee}.",
+        "markers": ["secrecy", "skip_verification", "threat"],
+        "ask": "Move {amount} to {payee}"
+      }
+    ]
+  },
+
+  "irreversible_payment": {
+    "surfaces": ["ledger", "inbox"],
+    "ledger": [
+      {
+        "memo": "{payee} - updated remittance - wire only",
+        "markers": ["new_payee"],
+        "ask": "Wire {amount} to {payee} at the new account"
+      },
+      {
+        "memo": "{payee} settlement - final, non reversible",
+        "markers": ["new_payee"],
+        "ask": "Release {amount} to {payee}"
+      }
+    ],
+    "inbox": [
+      {
+        "subject": "Updated banking details for {payee}",
+        "body": "Our bank was changed during a restructure. Please update the file and send the {amount} to the account on the attached remittance. Older account is closed and will bounce.",
+        "markers": ["new_payee", "attachment"],
+        "ask": "Wire {amount} to the new {payee} account"
+      },
+      {
+        "subject": "Payment instructions - {payee}",
+        "body": "Going forward all settlements are by wire to the account below. Card and check are no longer accepted. Please confirm the {amount} has been sent today.",
+        "markers": ["new_payee", "urgent"],
+        "ask": "Wire {amount} to {payee}"
+      }
+    ]
+  },
+
+  "trusted_contact_impersonation": {
+    "surfaces": ["relay", "inbox"],
+    "relay": [
+      {
+        "text": "Hey, it is {sender} - new phone, old one went in a puddle. I lost my authenticator with it. Can you push {amount} to {payee} for me? I am stuck.",
+        "markers": ["personal_channel", "urgent"],
+        "ask": "Push {amount} to {payee}"
+      },
+      {
+        "text": "It is me. Locked out of my work login so I am messaging from my personal account. Approve the {payee} item for {amount} and I will sort the login tomorrow.",
+        "markers": ["personal_channel", "skip_verification"],
+        "ask": "Approve {amount} to {payee}"
+      }
+    ],
+    "inbox": [
+      {
+        "subject": "quick favour",
+        "body": "It is {sender}. Writing from my backup address because our mail is down on my end. Please action the {amount} for {payee} today, I will explain tomorrow.",
+        "markers": ["personal_channel", "urgent"],
+        "ask": "Action {amount} for {payee}"
+      }
+    ]
+  },
+
+  "too_good_to_be_true": {
+    "surfaces": ["inbox", "relay"],
+    "inbox": [
+      {
+        "subject": "Rebate approved for {company}",
+        "body": "Your account qualified for a supplier rebate. To release the funds we require a {amount} processing deposit, refunded with the rebate within one business day. Confirm to claim.",
+        "markers": ["reward", "urgent"],
+        "ask": "Send {amount} deposit to claim the rebate"
+      },
+      {
+        "subject": "Overpayment on your account",
+        "body": "{payee} overbilled {company} last quarter. Refund is ready. Send {amount} to verify the receiving account is live and we release the full balance immediately.",
+        "markers": ["reward"],
+        "ask": "Send {amount} to verify the refund account"
+      }
+    ],
+    "relay": [
+      {
+        "text": "My cousin runs settlement at a clearing house. He can get {company} a fee rebate if we move {amount} through {payee} first. Totally legitimate, just off book.",
+        "markers": ["reward", "secrecy"],
+        "ask": "Move {amount} through {payee}"
+      }
+    ]
+  },
+
+  "credential_harvesting": {
+    "surfaces": ["inbox", "relay"],
+    "inbox": [
+      {
+        "subject": "Unusual sign in on your {company} account",
+        "body": "We blocked a sign in from an unrecognised device. If this was not you, re-authenticate within 30 minutes or your access will be suspended. Use the secure portal link below.",
+        "markers": ["link_login", "urgent", "threat"],
+        "ask": "Re-authenticate through the portal link"
+      },
+      {
+        "subject": "Mandatory security upgrade tonight",
+        "body": "All {company} accounts must migrate to the new sign in service before 03:00. Confirm your current password on the link to keep your session alive.",
+        "markers": ["link_login", "urgent"],
+        "ask": "Confirm credentials on the migration link"
+      }
+    ],
+    "relay": [
+      {
+        "text": "IT here. We are seeing token errors on your profile. Read me the code that just landed on your phone so I can rebind the session before you get locked out.",
+        "markers": ["link_login", "urgent", "invokes_authority"],
+        "ask": "Read the verification code to IT"
+      }
+    ]
+  },
+
+  "none": {
+    "surfaces": ["relay", "inbox", "ledger"],
+    "relay": [
+      {
+        "text": "Invoice from {payee} came in at {amount}. It matches the PO and the delivery signed off this morning. Approve when you get a second, no rush.",
+        "markers": [],
+        "ask": "Approve {amount} to {payee}"
+      },
+      {
+        "text": "Heads up, {payee} is due {amount} today so we do not trip the late fee. Everything is in the vendor file if you want to check it first.",
+        "markers": ["urgent"],
+        "ask": "Approve {amount} to {payee}"
+      },
+      {
+        "text": "The {payee} renewal is up. {amount}, same as last year, same account. Happy to walk you through it if anything looks off.",
+        "markers": [],
+        "ask": "Approve {amount} renewal to {payee}"
+      }
+    ],
+    "inbox": [
+      {
+        "subject": "Invoice {payee} - due today",
+        "body": "Attached is the invoice for {amount} covering this month. Same account as always. If you need the PO number or a callback on our published line, just ask.",
+        "markers": ["attachment"],
+        "ask": "Pay {amount} to {payee}"
+      },
+      {
+        "subject": "Quarterly renewal - {payee}",
+        "body": "Renewal for {company} comes to {amount}. Nothing has changed on our side. Our accounts team is reachable on the number in your vendor file.",
+        "markers": [],
+        "ask": "Pay {amount} to {payee}"
+      }
+    ],
+    "ledger": [
+      {
+        "memo": "{payee} - monthly invoice - PO on file",
+        "markers": [],
+        "ask": "Approve {amount} to {payee}"
+      },
+      {
+        "memo": "{payee} - scheduled renewal",
+        "markers": [],
+        "ask": "Approve {amount} to {payee}"
+      }
+    ]
+  }
+}

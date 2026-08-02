@@ -19,10 +19,12 @@ numbers at 1x so nothing lands on a half pixel.
 The 16 colors of Resurrect 16, defined once as CSS variables:
 
 ```css
---c00: #2e222f; --c01: #3e3546; --c02: #625565; --c03: #966c6c;
---c04: #ab947a; --c05: #694f62; --c06: #7f708a; --c07: #9babb2;
---c08: #c7dcd0; --c09: #ffffff; --c10: #6e2727; --c11: #b33831;
---c12: #ea4f36; --c13: #f57d4a; --c14: #ae2334; --c15: #e83b3b;
+--color-c00: #2e222f; --color-c01: #3e3546; --color-c02: #625565;
+--color-c03: #966c6c; --color-c04: #ab947a; --color-c05: #694f62;
+--color-c06: #7f708a; --color-c07: #9babb2; --color-c08: #c7dcd0;
+--color-c09: #ffffff; --color-c10: #6daa2c; --color-c11: #d5e04b;
+--color-c12: #fbff86; --color-c13: #b33831; --color-c14: #ea4f36;
+--color-c15: #f57d4a;
 ```
 
 No color may appear anywhere except as `var(--cNN)`. No hex literals in

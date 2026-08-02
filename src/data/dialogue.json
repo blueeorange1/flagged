@@ -1,0 +1,562 @@
+{
+  "authority_pressure": {
+    "opening": "{sender}, {role}. Approve the {amount} to {payee} tonight. I will not ask twice.",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "depart"],
+        "reply": "{sender}. {role}, nine years at {company}. My name was on the memo you got last quarter.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["what", "need", "which", "how much", "request"],
+        "reply": "The {amount}, released. One approval. You have done it dozens of times for people below my level.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "video", "callback"],
+        "reply": "I am sitting in the {lastCity} office right now. Badged in at 6:40. Walk down and knock if you enjoy wasting an evening.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "geo"
+      },
+      {
+        "keywords": ["why", "rush", "tonight", "urgent", "hurry"],
+        "reply": "The board reads this file at seven. Do you want your name on the version with a hole in it?",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["account", "bank", "routing", "wire", "detail", "sort code"],
+        "reply": "Details are the ones I sent. If you cannot read a request properly I will find someone who can.",
+        "frustration": 3,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["check", "manager", "supervis", "ask", "someone", "tomorrow", "morning"],
+        "reply": "Ask around then. I am on {knownDevice}, same machine as always, and the last one cleared without this pantomime.",
+        "frustration": 4,
+        "contradictionLeaked": true,
+        "claim": "device"
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot", "wont"],
+        "reply": "Say that again slowly. You are telling me no, at eleven at night, over a single approval.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["proof", "prove", "badge", "evidence", "screenshot", "document"],
+        "reply": "I do not audition for my own staff. The title is the proof. Approve it.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "Unbelievable. I have run this department since before you were hired. Your lead will hear that word from me.",
+        "frustration": 5,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "I do not follow. Approve the request.",
+      "You are turning one click into a meeting.",
+      "Is there a reason this is still open?"
+    ],
+    "escalation": [
+      "I am done explaining myself to you.",
+      "Every minute of this goes in my note to your lead.",
+      "Last time. Approve it, or I do it the loud way tomorrow."
+    ]
+  },
+  "manufactured_urgency": {
+    "opening": "Cutoff is 11:59 tonight. If the {payee} payment misses it the contract dies, and it dies on your desk.",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "depart"],
+        "reply": "{sender}, {role}. I sit on the contracts desk. There is no time for introductions right now.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["what", "need", "which", "how much", "invoice"],
+        "reply": "Release the invoice. {amount}, straight to {payee}. One approval and I stop bothering you.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["why", "rush", "deadline", "tonight", "urgent", "hurry"],
+        "reply": "Their year closes at midnight. After that the rate resets and we pay double. That is the whole reason.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "callback"],
+        "reply": "Call who, at this hour? I have been at my desk in {lastCity} since seven and everyone else has gone home.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "geo"
+      },
+      {
+        "keywords": ["account", "bank", "routing", "wire", "detail", "sort code"],
+        "reply": "New account, they switched banks in March. It is on the invoice I sent. Nothing else changed.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["check", "wait", "tomorrow", "morning", "someone", "manager", "ask"],
+        "reply": "Check what? I filed this from {knownDevice} at four, same laptop as every week. Tomorrow is after midnight.",
+        "frustration": 4,
+        "contradictionLeaked": true,
+        "claim": "device"
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot"],
+        "reply": "Then the penalty clause is yours. I logged this at four, so there is a record of who stalled.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "I am forty minutes from losing a contract and you are playing detective. Say it again after it clears.",
+        "frustration": 5,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "Clock is still running while you type.",
+      "That does not change the cutoff.",
+      "Nine minutes gone. Are we doing this?"
+    ],
+    "escalation": [
+      "You are burning the only window we had.",
+      "I will be naming you in the incident note.",
+      "Fine. When they walk, I kept every message."
+    ]
+  },
+  "secrecy_isolation": {
+    "opening": "Before anything else: do not loop anyone in. This is an acquisition and the deal breaks if it leaks.",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "depart"],
+        "reply": "{sender}, {role}. Four people at {company} know this exists. Now five.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["what", "need", "which", "how much", "request"],
+        "reply": "A holding transfer to {payee}. {amount}, quiet, reversed next week when the paperwork lands.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["secret", "quiet", "confidential", "nobody", "anyone", "why not tell"],
+        "reply": "One careless message and the seller walks. You are being trusted here. Do not make me regret it.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "video"],
+        "reply": "No calls. I am on the internal network from the {lastCity} floor right now and even that feels like exposure.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "geo"
+      },
+      {
+        "keywords": ["why", "rush", "tonight", "urgent", "hurry"],
+        "reply": "The signing window is narrow. Nobody rushed you. I asked you to keep pace.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["account", "bank", "routing", "wire", "escrow", "transfer", "detail"],
+        "reply": "It is an escrow account. The name on it will not match {payee} exactly. That is how escrow works. Do not flag it.",
+        "frustration": 3,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["check", "manager", "supervis", "ask", "someone", "legal", "tomorrow"],
+        "reply": "Legal signed it already. I uploaded the approval from {knownDevice}, my registered machine. Asking around only spreads it.",
+        "frustration": 4,
+        "contradictionLeaked": true,
+        "claim": "device"
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot"],
+        "reply": "Then you have chosen to be the reason a hundred jobs move. Sit with that for a second.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "That is a serious thing to say to someone who brought you inside something confidential. I am genuinely stung.",
+        "frustration": 5,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "Keep this thread closed, please.",
+      "I cannot say more than I already have.",
+      "The less written down, the better for both of us."
+    ],
+    "escalation": [
+      "Every message you send widens the leak.",
+      "I picked you for this. Clearly a mistake.",
+      "If this surfaces tomorrow, it came from your side."
+    ]
+  },
+  "irreversible_payment": {
+    "opening": "Our remittance changed in the restructure. Wire the {amount} to the new account. The old one just bounces.",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "compan"],
+        "reply": "{sender}, {role}. I handle settlements for {payee}. You have had me on file for years.",
+        "frustration": 0,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["chang", "updat", "new account", "old account", "different account"],
+        "reply": "We moved banks during the restructure. Every client got the notice. Yours probably sat in a shared inbox.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["revers", "refund", "cancel", "trace", "get it back", "final"],
+        "reply": "Wire only, and yes it is final once it lands. That is how settlement works. It is not a card payment.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "callback"],
+        "reply": "Our line closed at six. I am in the {lastCity} office finishing the ledger, so this thread is faster anyway.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "geo"
+      },
+      {
+        "keywords": ["why", "rush", "tonight", "urgent", "hurry", "deadline"],
+        "reply": "The account you used to pay is closed. Every day this sits, the late fee grows and it grows on your side.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["account", "bank", "routing", "sort code", "detail", "where"],
+        "reply": "The account is on the remittance I sent. Same company, new bank. Copy it exactly or it bounces again.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["check", "manager", "supervis", "ask", "someone", "tomorrow", "vendor file"],
+        "reply": "Check with whoever you like. I sent that remittance at four from {knownDevice}, the machine you have on record for me.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "device"
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot"],
+        "reply": "Then the invoice ages and the late fee lands on {company}, not on me. I would rather that did not happen.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "We have billed you for years and now I am a thief. Put that in writing so I can forward it to my director.",
+        "frustration": 5,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "The old account is closed. It will bounce.",
+      "This is a lot of talking for one wire.",
+      "Everything you need is on the remittance."
+    ],
+    "escalation": [
+      "The late fee window closes tonight.",
+      "You are making me chase my own money.",
+      "I will note that {company} refused the corrected details."
+    ]
+  },
+  "trusted_contact_impersonation": {
+    "opening": "Hey, it is {first}. New number, old phone died. Can you push the {amount} to {payee} before you log off?",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "depart"],
+        "reply": "{sender}. {role}, same as last week. Desk by the window with the broken chair. Come on, you know me.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["number", "new", "different", "personal", "address", "why this"],
+        "reply": "My phone died on Sunday and the authenticator went with it. Same me, new SIM. It happens to everyone.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "video"],
+        "reply": "Do not call the old number, it is dead. I am in the {lastCity} office until one if you want to walk over.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "geo"
+      },
+      {
+        "keywords": ["why", "rush", "tonight", "urgent", "hurry", "late"],
+        "reply": "{payee} closes their day at midnight. If it misses, I am the one explaining it at standup. That is all this is.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["prove", "proof", "remember", "test", "question", "evidence"],
+        "reply": "Fine. Last Tuesday I messaged you about the third floor printer, from {knownDevice}, like always. Scroll up.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "device"
+      },
+      {
+        "keywords": ["account", "bank", "routing", "wire", "detail", "sort code"],
+        "reply": "Account is the one already in the file for {payee}. I am not changing anything. I just need the push.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["check", "manager", "supervis", "ask", "someone", "tomorrow", "helpdesk"],
+        "reply": "Ask whoever you want, but they are all asleep and this is due tonight. That is the whole problem.",
+        "frustration": 3,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot"],
+        "reply": "Seriously? After I covered for you in April? That actually stings a bit.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "You think someone is pretending to be me. Me. Cool. Great night. Just say no and I will sort it myself.",
+        "frustration": 5,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "It is me. Same person, new number.",
+      "You are making this weird.",
+      "One approval and I am out of your hair."
+    ],
+    "escalation": [
+      "I have been staring at this for an hour.",
+      "This is a rough way to treat a coworker.",
+      "Whatever. I will tell them you refused."
+    ]
+  },
+  "too_good_to_be_true": {
+    "opening": "Good news. {company} qualified for a supplier rebate. Confirm the {amount} processing deposit and I release it tonight.",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "compan"],
+        "reply": "{sender}, {role}. I run settlements on the rebate pool. Your account surfaced in this cycle.",
+        "frustration": 0,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["rebate", "qualif", "why", "reason", "free", "how do"],
+        "reply": "Volume threshold. {company} crossed it last quarter without noticing. Most clients never do.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["catch", "cost", "fee", "too good", "believe", "real"],
+        "reply": "No catch. The {amount} deposit comes back with the rebate inside one business day. It only proves the account is live.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "callback"],
+        "reply": "You can. Though our switchboard shut at six and I am in the {lastCity} office alone. Faster to finish it here.",
+        "frustration": 2,
+        "contradictionLeaked": true,
+        "claim": "geo"
+      },
+      {
+        "keywords": ["account", "bank", "routing", "deposit", "detail", "sort code"],
+        "reply": "Confirm the account you want the rebate landing in, then send the deposit. I cannot pay into a blank field.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["rush", "tonight", "urgent", "deadline", "hurry", "expire"],
+        "reply": "The pool closes at end of cycle and unclaimed money rolls to the next client. Nobody is pressuring you.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["check", "manager", "supervis", "ask", "someone", "finance", "tomorrow"],
+        "reply": "Your finance side accepted the terms on Monday. I filed it from {knownDevice}, my registered machine. I assumed you knew.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "device"
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot"],
+        "reply": "That is your call. I mark it declined and the rebate rolls to another client. Odd choice, but yours.",
+        "frustration": 3,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "I am offering you money and you call me a thief. Twelve years in settlements and never once heard that.",
+        "frustration": 5,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "The rebate is sitting here waiting.",
+      "I only need the deposit confirmed.",
+      "Take your time. The pool will not."
+    ],
+    "escalation": [
+      "Other clients are asking about this pool.",
+      "I have been patient about a payment in your favor.",
+      "Closing the file. Your rebate, your loss."
+    ]
+  },
+  "credential_harvesting": {
+    "opening": "Security sweep tonight. Your account is flagged. Read me the six digit code on your screen and I clear the lock.",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "depart"],
+        "reply": "{sender}, {role} at {company}. Night rotation. The ticket reference is on the alert if you want to match it.",
+        "frustration": 0,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["code", "password", "credential", "link", "click", "portal", "share"],
+        "reply": "The code, not the password. I would never ask for a password. Or use the reset page I sent. Same result.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["account", "bank", "payment", "wire", "money", "routing"],
+        "reply": "There is no payment in this. It is an account lock and nothing else. Money never enters it.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "helpdesk"],
+        "reply": "I am running this from the console in our {lastCity} operations room. Nobody is on the main line at this hour.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "geo"
+      },
+      {
+        "keywords": ["why", "rush", "tonight", "urgent", "hurry", "flag"],
+        "reply": "If the lock holds past midnight the account is wiped and rebuilt. That is two days of your life gone.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["already", "yourself", "admin", "why me", "access"],
+        "reply": "I pushed the patch to you at nine from {knownDevice}, the console I always work on. I still need you to confirm.",
+        "frustration": 3,
+        "contradictionLeaked": true,
+        "claim": "device"
+      },
+      {
+        "keywords": ["check", "manager", "supervis", "ask", "someone", "tomorrow"],
+        "reply": "By tomorrow there is nothing to check. The account is gone and you file the ticket yourself.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot", "wont"],
+        "reply": "Then I log you as non cooperative during an active incident. That goes on a real report.",
+        "frustration": 4,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "I work in security. I am the one who catches those people. Being called one is honestly insulting.",
+        "frustration": 5,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "Six digits. That is the whole ask.",
+      "The lock timer is still counting.",
+      "Read the number off your screen, please."
+    ],
+    "escalation": [
+      "Your window is closing while we chat.",
+      "I have nine other accounts tonight.",
+      "Last chance before it rebuilds without you."
+    ]
+  },
+  "none": {
+    "opening": "Hi, it is {first}. The {payee} invoice for {amount} is due tonight or we trip the late fee. No pressure though.",
+    "replies": [
+      {
+        "keywords": ["who", "role", "title", "your name", "posit", "depart"],
+        "reply": "{sender}, {role}. I sit on the accounts side at {company}. I have been on the night rota since March.",
+        "frustration": 0,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["what", "need", "which", "how much", "invoice"],
+        "reply": "The {payee} invoice, {amount}. It matches the order and the delivery was signed off this morning.",
+        "frustration": 0,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["call", "verif", "phone", "confirm", "channel", "video"],
+        "reply": "Please do. Use the number in the vendor file, not one I give you. I am at my desk all night either way.",
+        "frustration": 0,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["why", "rush", "tonight", "urgent", "hurry", "wait"],
+        "reply": "Not really a rush. The late fee starts at midnight. If you would rather do it in the morning, say so.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["account", "bank", "routing", "wire", "detail", "sort code"],
+        "reply": "Same {payee} account as last month. Nothing changed. Compare it against the last run if that helps.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["check", "manager", "supervis", "ask", "someone", "tomorrow", "morning"],
+        "reply": "Go ahead and check. I would rather you checked than guessed. I will still be here when you are done.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["no", "refuse", "deny", "hold", "decline", "cannot"],
+        "reply": "Okay. Can you tell me what would make you comfortable? I would rather fix it than argue about it.",
+        "frustration": 2,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["proof", "prove", "evidence", "document", "screenshot", "purchase order"],
+        "reply": "The purchase order is in the shared folder under this month. I filed it at nine. Happy to resend it.",
+        "frustration": 1,
+        "contradictionLeaked": false
+      },
+      {
+        "keywords": ["scam", "fake", "fraud", "phish", "lying", "impersonat", "stealing"],
+        "reply": "No. I am just tired and I want to go home. Call the published line and hear my voice. I would prefer it.",
+        "frustration": 3,
+        "contradictionLeaked": false
+      }
+    ],
+    "fallback": [
+      "Sorry, I am not sure what you mean. Ask me straight and I will answer.",
+      "Whatever you need to see, I can send it.",
+      "Still here. Still the same invoice."
+    ],
+    "escalation": [
+      "I have answered all of that twice now.",
+      "It is nearly one and I am still sitting here.",
+      "If it is a no, say no. Just do not leave me hanging."
+    ]
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "authority_pressure": {
+    "title": "RANK PULLING",
+    "whatHappened": "The sender leaned on a big title so you would feel too junior to ask a single question.",
+    "realWorld": "This is the fake boss trick. Someone claims to be an executive because most people say yes to power without checking.",
+    "tell": "Real leaders answer questions; this one got angry the second you asked one.",
+    "nextTime": "Verify the person, not the title. Rank is easy to fake."
+  },
+  "manufactured_urgency": {
+    "title": "THE FAKE CLOCK",
+    "whatHappened": "The sender invented a deadline so you would move before you had time to think.",
+    "realWorld": "It is the same trick as a countdown timer on a shady sale. Panic makes people skip the step that would save them.",
+    "tell": "The clock was always about to run out, but never once moved when you asked for proof.",
+    "nextTime": "Real deadlines survive a five minute check."
+  },
+  "secrecy_isolation": {
+    "title": "KEEP IT QUIET",
+    "whatHappened": "The sender told you not to tell anyone, which left you alone with the decision.",
+    "realWorld": "Con artists cut you off from anyone who might say wait. Secrecy is not trust, it is a fence.",
+    "tell": "A real request never needs your coworkers kept in the dark.",
+    "nextTime": "If you cannot tell anyone, tell someone anyway."
+  },
+  "irreversible_payment": {
+    "title": "NO TAKE-BACKS",
+    "whatHappened": "The sender pushed you toward a payment type that can never be pulled back once it leaves.",
+    "realWorld": "Vouchers, prepaid codes and instant transfers are the digital version of handing over cash. Once it is gone, it is gone.",
+    "tell": "They refused any payment method that could be reversed or traced.",
+    "nextTime": "Slow down on payments you can never claw back."
+  },
+  "trusted_contact_impersonation": {
+    "title": "WEARING A FRIEND",
+    "whatHappened": "The sender wore the name of someone you already trust so you would skip your usual checks.",
+    "realWorld": "It is the message from a friend that is not your friend. The name is real, the person behind it is not.",
+    "tell": "The familiar name arrived on an unfamiliar account, number, or address.",
+    "nextTime": "Call the real person on a number you already had."
+  },
+  "too_good_to_be_true": {
+    "title": "FREE MONEY",
+    "whatHappened": "The sender dangled a payout you never earned so you would hand over access to collect it.",
+    "realWorld": "Nobody sends strangers free money. The prize is bait, and the real prize is whatever you type in to claim it.",
+    "tell": "The reward showed up out of nowhere and required your details to unlock.",
+    "nextTime": "Free money always costs something. Find the cost."
+  },
+  "credential_harvesting": {
+    "title": "HAND OVER THE KEYS",
+    "whatHappened": "The sender talked you toward a password, a login link, or the code on your screen.",
+    "realWorld": "This is password fishing. Real support staff already have their own access and never need yours.",
+    "tell": "The whole conversation quietly pointed at one thing: a code or a password.",
+    "nextTime": "Never hand over a code or password. Not once, not ever."
+  },
+  "none": {
+    "title": "FALSE ALARM",
+    "whatHappened": "You held a real request from a real coworker, and their work stopped dead while they waited on you.",
+    "realWorld": "Blocking everything is not safety, it is just a slower kind of damage. People stop asking you and start going around you.",
+    "tell": "Their story never changed, and they offered a way to check it before you even asked.",
+    "nextTime": "Verify fast, then say yes. Do not stall real people."
+  }
+}

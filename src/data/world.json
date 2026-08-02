@@ -1,0 +1,79 @@
+{
+  "company": "Meridian",
+  "homeCity": "Northgate",
+  "homeCountry": "Arland",
+  "cities": [
+    { "name": "Northgate", "country": "Arland", "x": 0, "y": 0 },
+    { "name": "Bellhaven", "country": "Arland", "x": 2, "y": 1 },
+    { "name": "Ridgemont", "country": "Arland", "x": 1, "y": 3 },
+    { "name": "Calder Bay", "country": "Arland", "x": 5, "y": 2 },
+    { "name": "Ashford", "country": "Arland", "x": 4, "y": 6 },
+    { "name": "Port Lumen", "country": "Arland", "x": 9, "y": 4 },
+    { "name": "Vasska", "country": "Kessia", "x": 41, "y": 28 },
+    { "name": "Drennik", "country": "Kessia", "x": 46, "y": 31 },
+    { "name": "Solvang Reach", "country": "Norvain", "x": 38, "y": 52 }
+  ],
+  "staff": [
+    {
+      "name": "Vaughn Reese",
+      "role": "VP Operations",
+      "city": "Northgate",
+      "scopes": ["payments", "vendors", "reports", "admin"]
+    },
+    {
+      "name": "Priya Sandoval",
+      "role": "Ops Coordinator",
+      "city": "Northgate",
+      "scopes": ["vendors", "reports"]
+    },
+    {
+      "name": "Teodor Halden",
+      "role": "Finance Lead",
+      "city": "Bellhaven",
+      "scopes": ["payments", "vendors", "reports"]
+    },
+    {
+      "name": "Mara Quill",
+      "role": "IT Admin",
+      "city": "Northgate",
+      "scopes": ["devices", "reports", "admin"]
+    },
+    {
+      "name": "Desmond Ito",
+      "role": "Accounts Payable",
+      "city": "Ridgemont",
+      "scopes": ["payments", "reports"]
+    },
+    {
+      "name": "Nell Rourke",
+      "role": "Contractor",
+      "city": "Ashford",
+      "scopes": ["reports"]
+    }
+  ],
+  "vendors": [
+    { "name": "Harborline Freight", "domain": "harborline-freight.example" },
+    { "name": "Corvid Supply Group", "domain": "corvidsupply.example" },
+    { "name": "Ambervale Print", "domain": "ambervale-print.example" },
+    { "name": "Tallow and Finch Legal", "domain": "tallowfinch.example" },
+    { "name": "Kestrel Vouchers", "domain": "kestrelvouchers.example" }
+  ],
+  "strangers": [
+    "Colm Verity",
+    "Ines Aldritch",
+    "Rurik Vane",
+    "Sable Monroe",
+    "Otto Kesh",
+    "Lira Bask"
+  ],
+  "devices": [
+    "WKS-4471",
+    "WKS-2038",
+    "LAP-8812",
+    "LAP-3390",
+    "MOB-7745",
+    "UNK-0000",
+    "UNK-5521",
+    "VDI-9902"
+  ]
+}

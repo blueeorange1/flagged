@@ -1,0 +1,47 @@
+{
+  "1": {
+    "title": "NIGHT ONE",
+    "lines": [
+      "23:14. Everyone else went home hours ago.",
+      "You handle accounts for Meridian. Requests land in RELAY, INBOX and LEDGER. You either APPROVE them or HOLD them.",
+      "Check SENTRY before you decide. It logs every login, device and city.",
+      "Approve an attack and the money is gone. Hold a real request and a real person files a complaint. Both cost you."
+    ]
+  },
+  "2": {
+    "title": "NIGHT TWO",
+    "lines": [
+      "IT pushed two detection rules to your console tonight.",
+      "Open RULES any time to read what is active. A rule firing is a reason to look harder, not an automatic answer."
+    ]
+  },
+  "3": {
+    "title": "NIGHT THREE",
+    "lines": [
+      "Finance flagged unusual movement this week.",
+      "Two more rules are live. Watch for amounts that sit just under a reporting line, and for senders firing off attempt after attempt."
+    ]
+  },
+  "4": {
+    "title": "NIGHT FOUR",
+    "lines": [
+      "Someone has been reading up on Meridian. And on you.",
+      "Your personal account is reachable from this machine tonight. Some of what arrives will be aimed at you, not the company.",
+      "Two more rules are live. Pressure and irreversible payments."
+    ]
+  },
+  "5": {
+    "title": "NIGHT FIVE",
+    "lines": [
+      "Word got around that someone tried to move a large wire past you.",
+      "Two final rules are live: off hours access, and people reaching for permissions their job does not carry."
+    ]
+  },
+  "6": {
+    "title": "NIGHT SIX",
+    "lines": [
+      "Last night on the account. Every rule is active.",
+      "Nothing new is coming to help you. Read the log, ask the questions, make the call."
+    ]
+  }
+}
