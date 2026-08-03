@@ -13,7 +13,7 @@ import { opening } from './lib/dialogue.js'
 import { logEvent } from './lib/telemetry.js'
 import { sfx, setMuted } from './lib/audio.js'
 
-const START_BALANCE = 340000
+const START_BALANCE = 200000
 const START_PERSONAL = 12400
 const CODE_LOSS = 9800
 const TIMER_SECONDS = 90
@@ -22,6 +22,7 @@ const DROP_MS = 600
 const BUZZ_AT = [0, 8000, 20000, 40000]
 const INTR_CHANCE = 0.25
 const ALARM_MS = 3600
+const DEV = new URLSearchParams(location.search).has('dev')
 
 const ALARM_BARS = [
   { text: 'ACCOUNT COMPROMISED', bg: 'var(--color-c12)', fg: 'var(--color-c00)' },
@@ -238,6 +239,7 @@ export default function App() {
   intrRef.current = intr
   const intrDay = useRef(0)
   const intrTimers = useRef([])
+  const intrRun = useRef(0)
 
   const cur = game.days[day][idx]
   const accuracy = total === 0 ? 100 : Math.round((right / total) * 100)
@@ -279,7 +281,7 @@ export default function App() {
     setChat(cur.phone ? [{ from: 'them', text: first }] : [])
     if (cur.phone) pushMsg(thKey(cur.sender), cur.sender, 'them', first, false, cur.id)
     setPhoneView({ mode: 'list' })
-    setIntr(null)
+    setIntr((v) => (v && !v.responded && v.stage !== 'closed' ? v : null))
     opened.current = new Set()
     startedAt.current = Date.now()
     readAt.current = 0
@@ -402,10 +404,12 @@ export default function App() {
   }, [cur, playing, caseUnread])
 
   useEffect(() => {
-    intrTimers.current.forEach(clearTimeout)
-    intrTimers.current = []
     if (!playing || !cur || cur.tut || day < 3) return
     if (intrDay.current === day || Math.random() >= INTR_CHANCE) return
+    // claim the day up front: the sequence outlives this case, so a verdict
+    // landing mid-flight must not re-roll it on the next one
+    intrDay.current = day
+    const run = intrRun.current
 
     const digits = String(100000 + Math.floor(Math.random() * 900000))
     const shown = digits.slice(0, 3) + '-' + digits.slice(3)
@@ -420,12 +424,12 @@ export default function App() {
       homeDevice: a.device,
     }
     const key = thKey(sender)
-    const at = (ms, fn) => intrTimers.current.push(setTimeout(fn, ms))
+    const at = (ms, fn) =>
+      intrTimers.current.push(setTimeout(() => run === intrRun.current && fn(), ms))
     const t0 = 3000 + Math.random() * 12000
     const ping = (level) => setBuzz((b) => ({ seq: b.seq + 1, level }))
 
     at(t0, () => {
-      intrDay.current = day
       pushMsg(thKey(SYS_SENDER), SYS_SENDER, 'them', pick(INTERRUPT.system.lines).replace('{code}', shown), false, 'interrupt')
       setIntr({ digits, shown, key, sender, stage: 'sent', gave: false, responded: false, checkedSentry: false })
       ping(2)
@@ -446,11 +450,6 @@ export default function App() {
       pushMsg(key, sender, 'them', INTERRUPT.quiet, false, 'interrupt')
       setIntr((v) => v && { ...v, stage: 'closed' })
     })
-
-    return () => {
-      intrTimers.current.forEach(clearTimeout)
-      intrTimers.current = []
-    }
   }, [cur, playing, day])
 
   function respondCode(text) {
@@ -728,6 +727,9 @@ export default function App() {
     setAlarm(0)
     setRunLog([])
     setBankrupt(null)
+    intrRun.current++
+    intrTimers.current.forEach(clearTimeout)
+    intrTimers.current = []
     intrDay.current = 0
     setCamDir(null)
     setTutSkip(false)
@@ -947,6 +949,11 @@ export default function App() {
                     SKIP TUT
                   </button>
                 ))}
+              {DEV && (
+                <button className="btn" onClick={() => { sfx.click(); setPhase('dayend') }}>
+                  END DAY
+                </button>
+              )}
               <button className="btn" onClick={() => { sfx.click(); setShowRules(true) }}>
                 ?
               </button>

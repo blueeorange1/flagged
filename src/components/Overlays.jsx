@@ -159,6 +159,37 @@ const TACTIC_LABEL = {
   credential_harvesting: 'HAND OVER THE KEYS',
 }
 
+const TACTIC_INFO = {
+  authority_pressure: {
+    is: 'Someone leans on a title - your boss, a director, the fraud desk - so that checking them feels like insubordination.',
+    stop: 'A title is just a word typed into a message. Verify the person on a number or account you already had, and let them be annoyed.',
+  },
+  manufactured_urgency: {
+    is: 'A deadline that only exists inside their message. Wire it in ten minutes. The account closes tonight. Now, now, now.',
+    stop: 'Real emergencies survive a five minute check. If the clock is the loudest part of the request, the clock is the attack.',
+  },
+  secrecy_isolation: {
+    is: 'You are told to keep it between us. Do not loop in the team. Do not mention it to your parents.',
+    stop: 'Secrecy exists to keep you away from the one person who would spot it in a second. Tell that person anyway.',
+  },
+  irreversible_payment: {
+    is: 'They steer the money into a form nobody can pull back: gift cards, crypto, a wire to a brand new account.',
+    stop: 'Ask why it has to be that exact way. Normal payments can be reversed. The ones that cannot are chosen for that reason.',
+  },
+  trusted_contact_impersonation: {
+    is: 'The name on the message is someone you know, but the number, the device or the city is one you have never seen.',
+    stop: 'Reach the real person on the contact you already have saved. Never reply down the new channel to ask if it is really them.',
+  },
+  too_good_to_be_true: {
+    is: 'A refund you never asked for, a prize you never entered, an overpayment they need you to send back.',
+    stop: 'Money that nobody owes you is bait. Their side of it is fake and reverses later; the part you send back is real and gone.',
+  },
+  credential_harvesting: {
+    is: 'They ask straight out for a password or a sign-in code, or push you onto a page that asks for one.',
+    stop: 'No real company, bank or helpdesk will ever ask you to hand over a code or password. Say no and open the site yourself.',
+  },
+}
+
 const secs = (ms) => Math.round(ms / 1000)
 
 // every line below is read off this run's own decisions, never a canned tip
@@ -273,20 +304,28 @@ export function EndOfRun({ bankrupt, balance, personal, accuracy, log, onRestart
         <div style={{ color: 'var(--color-c06)' }}>No attacks reached a verdict this run.</div>
       )}
       {rows.map((r) => (
-        <div key={r.tactic} style={{ display: 'flex', gap: 3, marginBottom: 1 }}>
-          <span style={{ flex: 1, minWidth: 0, color: 'var(--color-c08)' }}>
-            {TACTIC_LABEL[r.tactic]}
-          </span>
-          <span style={{ color: 'var(--color-c06)' }}>seen {r.seen}</span>
-          <span
-            style={{
-              width: 46,
-              textAlign: 'right',
-              color: r.right === r.seen ? 'var(--color-c10)' : 'var(--color-c14)',
-            }}
-          >
-            {r.right}/{r.seen} right
-          </span>
+        <div key={r.tactic} style={{ marginBottom: 3 }}>
+          <div style={{ display: 'flex', gap: 3 }}>
+            <span style={{ flex: 1, minWidth: 0, color: 'var(--color-c08)' }}>
+              {TACTIC_LABEL[r.tactic]}
+            </span>
+            <span style={{ color: 'var(--color-c06)' }}>seen {r.seen}</span>
+            <span
+              style={{
+                width: 46,
+                textAlign: 'right',
+                color: r.right === r.seen ? 'var(--color-c10)' : 'var(--color-c14)',
+              }}
+            >
+              {r.right}/{r.seen} right
+            </span>
+          </div>
+          <div style={{ color: 'var(--color-c07)', paddingLeft: 6 }}>
+            {TACTIC_INFO[r.tactic].is}
+          </div>
+          <div style={{ color: 'var(--color-c10)', paddingLeft: 6 }}>
+            HOW TO STOP IT: {TACTIC_INFO[r.tactic].stop}
+          </div>
         </div>
       ))}
 
